@@ -6,10 +6,11 @@ class VariableDeclaration(AST):
         self.name = name
         self.expression = expression
         self.type = type
+        self.reference = None
 
 
 class Variable(AST):
-    def __init__(self, scope, name, type=None):
+    def __init__(self, scope, name, kind=None):
         self.scope = scope
         self.name = name
-        self.type = type
+        self.kind = kind

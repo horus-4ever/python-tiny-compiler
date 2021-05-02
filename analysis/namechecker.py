@@ -88,6 +88,12 @@ class NameChecker:
                 statement.name,
                 statement.type
             )
+            statement.reference = self.current_scope[statement.name]
+            if statement.type is not None:
+                type = statement.type
+                if type.name not in self.global_scope:
+                    raise Exception(f"Unkown type '{type.name}'")
+                type.reference = self.global_scope[type.name]
         if isinstance(statement, ast.Return):
             self.check_expression(statement.expression)
         elif isinstance(statement, ast.Expression):

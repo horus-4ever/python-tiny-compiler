@@ -3,7 +3,7 @@ from antlr4 import *
 from antlr_output.languageLexer import languageLexer
 from antlr_output.languageParser import languageParser
 from parser import Parser
-from analysis import NameChecker
+from analysis import NameChecker, TypeChecker
 
 # alias antlr4='java -jar /usr/local/lib/antlr-4.9.2-complete.jar'
 # antlr4 -o antlr_output/ -Dlanguage=Python3 -visitor language.g4
@@ -28,6 +28,10 @@ def main(argv):
 
     name_checker = NameChecker(ast)
     ast = name_checker.check()
+    print("\n", ast)
+
+    type_checker = TypeChecker(ast)
+    ast = type_checker.check()
     print("\n", ast)
     # print(tree.toStringTree(recog=parser))
 
