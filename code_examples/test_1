@@ -1,0 +1,4 @@
+func main(): Empty {
+    let something = 5;
+    print(to_string(something));
+}

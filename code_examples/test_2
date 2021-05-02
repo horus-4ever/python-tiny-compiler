@@ -1,0 +1,7 @@
+func something(t: &Int): String {
+
+}
+
+func main(): Empty {
+    let something: Int = 5;
+}
