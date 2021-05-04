@@ -10,5 +10,23 @@ class Root(AST):
         for structure in structures:
             self.global_scope[structure.name] = structure
 
-    def set_builtins(self, **builtins):
-        self.global_scope.extend(builtins)
+        self.functions = {}
+        for function in functions:
+            self.functions[function.name] = function
+        self.structures = {}
+        for structure in structures:
+            self.structures[structure.name] = structure
+        self.builtin_functions = {}
+        self.builtin_structures = {}
+
+    def set_builtins(self, builtin_functions, builtin_structures):
+        self.builtin_functions = builtin_functions
+        self.builtin_structures = builtin_structures
+        self.global_scope.extend({**builtin_functions, **builtin_structures})
+
+    @property
+    def all_types(self):
+        return {
+            **self.structures,
+            **self.builtin_structures
+        }

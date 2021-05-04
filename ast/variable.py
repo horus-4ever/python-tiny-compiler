@@ -14,3 +14,7 @@ class Variable(AST):
         self.scope = scope
         self.name = name
         self.kind = kind
+        self.ir_reference = None
+
+    def __len__(self):
+        return len(self.kind)

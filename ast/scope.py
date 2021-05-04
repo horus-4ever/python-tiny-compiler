@@ -5,6 +5,7 @@ class Scope(AST):
     def __init__(self):
         self.depth = 0
         self.parent = None
+        self.children = []
         self.elements = {}
 
     def extend(self, dct):
@@ -21,3 +22,14 @@ class Scope(AST):
 
     def __contains__(self, key):
         return key in self.elements
+
+    def flatten(self):
+        result = []
+        for element in self.elements.values():
+            result.append(element)
+        for child in self.children:
+            result.extend(child.flatten())
+        return result
+
+    def __len__(self):
+        return sum(map(len, self.flatten()))
