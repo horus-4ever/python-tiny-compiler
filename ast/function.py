@@ -7,6 +7,7 @@ class Function(AST):
         self.parameters = parameters
         self.return_type = return_type
         self.block = block
+        self.scope = {}
 
 
 class BuiltinFunction(AST):
@@ -14,3 +15,4 @@ class BuiltinFunction(AST):
         self.name = name
         self.parameters = parameters
         self.return_type = return_type
+        self.scope = {}

@@ -2,19 +2,15 @@ from .ast import AST
 
 
 class VariableDeclaration(AST):
-    def __init__(self, name, expression, type=None):
+    def __init__(self, name, expression, kind=None):
         self.name = name
         self.expression = expression
-        self.type = type
-        self.reference = None
+        self.kind = kind
+        self.variable_id = None
 
 
 class Variable(AST):
-    def __init__(self, scope, name, kind=None):
-        self.scope = scope
+    def __init__(self, name, kind=None):
         self.name = name
         self.kind = kind
-        self.ir_reference = None
-
-    def __len__(self):
-        return len(self.kind)
+        self.is_valid = True

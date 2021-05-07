@@ -4,21 +4,16 @@ import ast
 class TypeChecker:
     def __init__(self, ast):
         self.ast = ast
+        self.current_scope = {}
 
     @property
     def global_scope(self):
         return self.ast.global_scope
 
     def check(self):
-        for name, structure in filter(
-            lambda element: isinstance(element[1], ast.Structure),
-            self.ast.global_scope
-        ):
+        for name, structure in self.ast.structures.items():
             self.check_structure(structure)
-        for name, function in filter(
-            lambda element: isinstance(element[1], ast.Function),
-            self.ast.global_scope
-        ):
+        for name, function in self.ast.functions.items():
             self.check_function(function)
         return self.ast
 
@@ -27,22 +22,23 @@ class TypeChecker:
             self.check_function(method)
 
     def check_function(self, function):
+        self.current_scope = function.scope
         # check statements
         self.check_block(function.block)
         # check return type
-        expected_return_type = function.return_type.reference
+        expected_return_type = function.return_type
         has_return_statements = self.recursive_check_return_type(expected_return_type, function.block)
         if not has_return_statements:
-            if expected_return_type is not self.global_scope["Empty"]:
-                raise Exception(f"The return type must be '{expected_return_type.name}', but nothing is returned.")
+            if expected_return_type != ast.NormalType("Empty"):
+                raise Exception(f"The return type must be '{expected_return_type}', but nothing is returned.")
 
     def recursive_check_return_type(self, expected_return_type, block):
         has_return_statements = False
         for statement in block.statements:
             if isinstance(statement, ast.Return):
                 has_return_statements = True
-                if statement.expression.kind is not expected_return_type:
-                    raise Exception(f"Wrong return type. Expected '{expected_return_type.name}', got '{statement.expression.kind.name}'.")
+                if statement.expression.kind != expected_return_type:
+                    raise Exception(f"Wrong return type. Expected '{expected_return_type}', got '{statement.expression.kind}'.")
         return has_return_statements
 
     def check_block(self, block):
@@ -56,6 +52,7 @@ class TypeChecker:
             self.check_variable_declaration(statement)
         elif isinstance(statement, ast.Return):
             self.check_expression(statement.expression)
+            # print("aqh", statement.expression.type_name)
         elif isinstance(statement, ast.Block):
             self.check_block(statement)
         elif isinstance(statement, ast.IfStatement):
@@ -63,13 +60,20 @@ class TypeChecker:
 
     def check_expression(self, expression):
         if isinstance(expression, ast.Number):
-            expression.kind = self.global_scope["Int"]
+            expression.kind = ast.NormalType("Int")
         elif isinstance(expression, ast.String):
-            expression.kind = self.global_scope["Str"]
+            expression.kind = ast.NormalType("Str")
         elif isinstance(expression, ast.Bool):
-            expression.kind = self.global_scope["Bool"]
+            expression.kind = ast.NormalType("Bool")
         elif isinstance(expression, ast.VariableReference):
-            expression.kind = expression.reference.kind
+            variable = self.current_scope[expression.variable_id]
+            expression.kind = variable.kind
+        elif isinstance(expression, ast.MakeRef):
+            variable = self.current_scope[expression.variable_id]
+            expression.kind = ast.RefType(variable.kind.type_name)
+        elif isinstance(expression, ast.DeRef):
+            variable = self.current_scope[expression.variable_id]
+            expression.kind = ast.NormalType(variable.kind.type_name)
         elif isinstance(expression, ast.FunctionCall):
             self.check_function_call(expression)
         elif isinstance(expression, ast.ClassmethodCall):
@@ -79,46 +83,54 @@ class TypeChecker:
 
     def check_variable_declaration(self, statement):
         self.check_expression(statement.expression)
-        if statement.type is not None:
-            if statement.type.reference is not statement.expression.kind:
-                raise Exception(f"Wrong type in variable declaration. Left: '{statement.type.name}' and Right: '{statement.expression.kind.name}'")
+        if statement.kind is not None:
+            if statement.kind != statement.expression.kind:
+                raise Exception(f"Wrong type in variable declaration. Left: '{statement.kind}' and Right: '{statement.expression.kind}'")
         else:
-            statement.reference.kind = statement.expression.kind
+            variable = self.current_scope[statement.variable_id]
+            statement.kind = statement.expression.kind
+            variable.kind = statement.kind
 
     def check_function_call(self, expression):
-        if len(expression.arguments) != len(expression.reference.parameters):
-            raise Exception(f"Expected '{len(expression.reference.parameters)}' argument, but '{len(expression.arguments)}' were provided.")
+        function = self.ast.all_functions[expression.name]
+        if len(expression.arguments) != len(function.parameters):
+            raise Exception(f"Expected '{len(function.parameters)}' argument, but '{len(expression.arguments)}' were provided.")
         # typecheck arguments
         for argument in expression.arguments:
-            self.check_expression(argument)
-        for argument, parameter in zip(expression.arguments, expression.reference.parameters):
-            if argument.kind is not parameter.kind.reference:
-                raise Exception(f"Wrong type. Expected '{parameter.kind.reference.name}', got '{argument.kind.name}'.")
-        expression.kind = expression.reference.return_type.reference
+            self.check_expression(argument.expression)
+            argument.kind = argument.expression.kind
+        for argument, parameter in zip(expression.arguments, function.parameters):
+            argument.variable_id = parameter.variable_id
+            if argument.kind != parameter.kind:
+                raise Exception(f"Wrong type. Expected '{parameter.kind}', got '{argument.kind}'.")
+        expression.kind = function.return_type
 
     def check_classmethod_call(self, expression):
-        if len(expression.arguments) != len(expression.func_reference.parameters):
-            raise Exception(f"Expected '{len(expression.func_reference.parameters)}' argument, but '{len(expression.arguments)}' were provided.")
+        method = self.ast.all_types[expression.struct_name].methods[expression.func_name]
+        if len(expression.arguments) != len(method.parameters):
+            raise Exception(f"Expected '{len(method.parameters)}' argument, but '{len(expression.arguments)}' were provided.")
         for argument in expression.arguments:
-            self.check_expression(argument)
-        for argument, parameter in zip(expression.arguments, expression.func_reference.parameters):
-            if argument.kind is not parameter.kind.reference:
-                raise Exception(f"Wrong type. Expected '{parameter.kind.reference.name}', got '{argument.kind.name}'.")
-        expression.kind = expression.func_reference.return_type.reference
+            self.check_expression(argument.expression)
+            argument.kind = argument.expression.kind
+        for argument, parameter in zip(expression.arguments, method.parameters):
+            argument.variable_id = parameter.variable_id
+            if argument.kind != parameter.kind:
+                raise Exception(f"Wrong type. Expected '{parameter.kind}', got '{argument.kind}'.")
+        expression.kind = method.return_type
 
     def check_if_statement(self, statement):
         self.check_expression(statement.condition)
-        if statement.condition.kind is not self.global_scope["Bool"]:
-            raise Exception(f"Expected 'Bool', but found '{statement.condition.kind.name}'")
+        if statement.condition.type_name != "Bool":
+            raise Exception(f"Expected 'Bool', but found '{statement.condition.type_name}'")
         self.check_block(statement.block)
 
     def check_structure_instanciation(self, expression):
-        expression.kind = expression.reference
+        expression.type_name = expression.name
+        structure = self.ast.all_types[expression.name]
         for name, argument in expression.arguments.items():
             self.check_expression(argument.expression)
-        if len(expression.arguments) != len(expression.reference.fields):
-            raise Exception(f"Structure '{expression.name}' has got '{len(expression.reference.fields)}' fields.")
-        for name, kind in expression.reference.fields.items():
-            print(expression.arguments[name].expression.kind, "\n", kind)
-            if expression.arguments[name].expression.kind is not kind.kind.reference:
-                raise Exception(f"Expected '{kind.kind.reference.name}', but got '{expression.arguments[name].expression.kind.name}'")
+        if len(expression.arguments) != len(structure.fields):
+            raise Exception(f"Structure '{expression.name}' has got '{len(structure.fields)}' fields.")
+        for name, kind in structure.fields.items():
+            if expression.arguments[name].expression.type_name != kind.type_name:
+                raise Exception(f"Expected '{kind.type_name}', but got '{expression.arguments[name].expression.type_name}'")

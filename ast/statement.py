@@ -12,6 +12,7 @@ class Return(Statement):
 
 
 class IfStatement(Statement):
-    def __init__(self, condition, block):
+    def __init__(self, condition, block, else_statement=None):
         self.condition = condition
         self.block = block
+        self.else_statement = else_statement

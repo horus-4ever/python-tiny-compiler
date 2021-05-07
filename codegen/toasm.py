@@ -34,14 +34,16 @@ memcpy:
 
 
 print:
+    push ebp
+    mov ebp, esp
+
     mov	edx, [esi+4]; message length
     mov	ecx, [esi]	; message to write
     mov	ebx,1		; file descriptor (stdout)
     mov	eax,4		; system call number (sys_write)
     int	0x80		; call kernel
 
-    mov ebx, [esi]
-    call _String__drop
+    leave
     ret
 
 int_eq:
@@ -115,11 +117,11 @@ _Int__to_string:
 _String__from:
     push ebp
     mov ebp, esp
+    
+    mov edx, dword[esi+4]
 
     push edi
     push esi
-    
-    mov edx, dword[esi+4]
 
     push edx
     call malloc
@@ -185,7 +187,6 @@ _String__drop:
 
     ret
 
-{main}
 {text}
 """
 
@@ -201,36 +202,105 @@ main:
     ret
 """
 
-FUNCTION_BODY = """
-{function_name}:
-    push ebp
-    mov ebp, esp
-{function_code}
-"""
-
 
 class ToASM:
     def __init__(self, code):
-        self.code = code
+        self.ir = code
 
     def to_asm(self):
-        rodata = self.generate_rodata(self.code.rodata)
-        text = self.generate_text(self.code.text)
+        rodata = self.generate_rodata(self.ir.rodata)
+        text = self.generate_text(self.ir.text)
+        """
         main_name = f"function_{hashlib.md5('main'.encode()).hexdigest()}"
         main = self.generate_main(self.code.text.functions[main_name])
         return BASIC_PROGRAM_SHAPE.format(rodata=rodata, text=text, main=main)
+        """
+        return BASIC_PROGRAM_SHAPE.format(rodata=rodata, text=text)
 
     def generate_rodata(self, rodata):
         result = ""
         for id, string in rodata.string_litterals.items():
-            result += f"_{id}: db '{string}'\n"
+            result += f"string_{id}: db '{string}'\n"
         return result
 
-    def generate_main(self, function):
-        main_hash = function.name #"function_" + hashlib.md5(function.name.encode()).hexdigest()
-        return_size = function.return_size
-        scope_size = function.scope_size
-        return MAIN_FUNCTION.format(main_hash=main_hash, return_size=return_size, scope_size=scope_size)
+    def generate_text(self, text):
+        result = ""
+        for instruction in text.instructions:
+            result += self.generate_instruction(instruction)
+        return result
+
+    def generate_instruction(self, instruction):
+        result = ""
+        if isinstance(instruction, ir.LABEL):
+            result += f"{instruction.name}:\n"
+        elif isinstance(instruction, ir.FUNCTION_PRELUDE):
+            result += "\tpush ebp\n"
+            result += "\tmov ebp, esp\n"
+        elif isinstance(instruction, ir.FUNCTION_END):
+            result += "\tleave\n"
+            result += "\tret\n"
+        elif isinstance(instruction, ir.PREPARE_RETURN):
+            result += f"\tsub esp, {instruction.size}\n"
+        elif isinstance(instruction, ir.PREPARE_SCOPE):
+            result += f"\tsub esp, {instruction.scope_size}\n"
+            result += "\tpush esi\n"
+            result += "\tpush edi\n"
+            result += f"\tlea esi, [esp+8]\n"
+            result += f"\tlea edi, [esp+8+{instruction.scope_size}]\n"
+        elif isinstance(instruction, ir.CALL_FUNCTION):
+            result += f"\tcall {instruction.func_name}\n"
+        elif isinstance(instruction, ir.POP_SCOPE):
+            result += "\tpop edi\n"
+            result += "\tpop esi\n"
+            result += f"\tadd esp, {instruction.scope_size}\n"
+        elif isinstance(instruction, ir.LOAD_VALUE):
+            result += "\tsub esp, 4\n"
+            result += f"\tmov dword[esp], {instruction.value}\n"
+        elif isinstance(instruction, ir.LOAD_STRING_LITTERAL):
+            result += "\tsub esp, 8\n"
+            result += f"\tmov dword[esp], {instruction.string_label}\n"
+            result += f"\tmov dword[esp+4], {instruction.size}\n"
+        elif isinstance(instruction, ir.LOAD_VARIABLE):
+            result += f"\tsub esp, {instruction.size}\n"
+            result += f"\tmov edx, esp\n"
+            result += f"\tlea eax, [ebp+16+{instruction.variable_offset}]\n" # result += f"\tmov eax, [esi+{instruction.variable_offset}]\n"
+            result += f"\tmov ecx, {instruction.size}\n"
+            result += f"\tcall memcpy\n"
+        elif isinstance(instruction, ir.LOAD_REF):
+            result += f"\tsub esp, 4\n"
+            result += f"\tlea eax, [ebp+16+{instruction.variable_offset}]\n"
+            result += f"\tmov dword[esp], eax\n"
+        elif isinstance(instruction, ir.LOAD_DEREF):
+            result += f"\tsub esp, {instruction.size}\n"
+            result += f"\tlea eax, [ebp+16+{instruction.variable_offset}]\n"
+            result += f"\tmov edx, esp\n"
+            result += f"\tmov eax, [eax]\n"
+            result += f"\tmov ecx, {instruction.size}\n"
+            result += f"\tcall memcpy\n"
+        elif isinstance(instruction, ir.STORE_ARGUMENT):
+            result += f"\tlea edx, [esi+{instruction.offset}]\n"
+            result += f"\tmov eax, esp\n"
+            result += f"\tmov ecx, {instruction.size}\n"
+            result += f"\tcall memcpy\n"
+            result += f"\tadd esp, {instruction.size}\n"
+        elif isinstance(instruction, ir.STORE_VARIABLE):
+            result += f"\tlea edx, [ebp+16+{instruction.variable_offset}]\n"
+            result += f"\tmov eax, esp\n"
+            result += f"\tmov ecx, {instruction.size}\n"
+            result += f"\tcall memcpy\n"
+            result += f"\tadd esp, {instruction.size}\n"
+        elif isinstance(instruction, ir.RETURN):
+            result += f"\tmov edx, edi\n"
+            result += f"\tmov eax, esp\n"
+            result += f"\tmov ecx, {instruction.size}\n"
+            result += "\tcall memcpy\n"
+            result += f"\tadd esp, {instruction.size}\n"
+        elif isinstance(instruction, ir.POP_JMP_IF_FALSE):
+            result += f"\tmov eax, dword[esp]\n"
+            result += f"\tadd esp, 4\n"
+            result += f"\tcmp eax, 0\n"
+            result += f"\tje {instruction.label_name}\n"
+        return result
 
     def generate_function(self, function):
         function_name = function.name#"function_" + hashlib.md5(function.name.encode()).hexdigest()
@@ -307,9 +377,3 @@ class ToASM:
                 function_code += f"\tje .L{instruction.label}\n"
 
         return FUNCTION_BODY.format(function_name=function_name, function_code=function_code)
-
-    def generate_text(self, text):
-        result = ""
-        for name, function in text.functions.items():
-            result += self.generate_function(function)
-        return result

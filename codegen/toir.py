@@ -1,154 +1,131 @@
-import ast
 import ir
+import ast
 import hashlib
 
 
 class ToIR:
-    def __init__(self, ast):
-        self.ast = ast
-        self.condition_label_number = 0
+    def __init__(self, code):
+        self.ir = code
         self.result = ir.Program()
+        self.current_scope = None
+        self.condition_number = 0
+
+    @staticmethod
+    def convert_function_name(name):
+        return f"func__{hashlib.md5(name.encode()).hexdigest()}"
 
     def convert(self):
-        self.convert_methods_to_functions()
-        for name, structure in filter(
-            lambda element: isinstance(element[1], ast.BuiltinStructure),
-            self.ast.global_scope
-        ):
-            for name, function in structure.methods.items():
-                new_function = self.convert_builtin_function(function)
-                function.ir_reference = new_function
-        for name, function in filter(
-            lambda element: isinstance(element[1], ast.BuiltinFunction),
-            self.ast.global_scope
-        ):
-            new_function = self.convert_builtin_function(function)
-            function.ir_reference = new_function
-
-        for name, function in filter(
-            lambda element: isinstance(element[1], ast.Function),
-            self.ast.global_scope
-        ):
-            func_name = f"function_{hashlib.md5(function.name.encode()).hexdigest()}"
-            new_function = ir.Function(func_name, None, None, None)
-            function.ir_reference = new_function
-            self.result.text.functions[new_function.name] = new_function
-        for name, function in filter(
-            lambda element: isinstance(element[1], ast.Function),
-            self.ast.global_scope
-        ): 
+        self.create_main()
+        # print(self.ir.functions)
+        for func_name, function in self.ir.functions.items():
             self.convert_function(function)
         return self.result
 
-    def convert_methods_to_functions(self):
-        for struct_name, structure in filter(
-            lambda element: isinstance(element[1], ast.Structure),
-            self.ast.global_scope.elements.copy().items()
-        ):
-            for func_name, function in structure.methods.items():
-                function.name = f"{struct_name}::{func_name}"
-                self.ast.global_scope[function.name] = function
+    def create_main(self):
+        function = self.ir.functions["main"]
+        self.result.text.add(ir.LABEL("main"))
+        self.result.text.add(ir.FUNCTION_PRELUDE())
+        self.result.text.add(ir.PREPARE_RETURN(function.return_size))
+        self.result.text.add(ir.PREPARE_SCOPE(function.scope_size))
+        self.result.text.add(ir.CALL_FUNCTION(function.name))
+        self.result.text.add(ir.POP_SCOPE(function.scope_size))
+        self.result.text.add(ir.FUNCTION_END())
 
     def convert_function(self, function):
-        # scope variables
-        function_scope = function.block.scope.flatten()
-        variables = []
-        offset = 0
-        for variable in function_scope:
-            new_variable = ir.Variable(variable.kind.name, len(variable), offset)
-            variable.ir_reference = new_variable
-            variables.append(new_variable)
-            offset += len(variable)
-        function.ir_reference.variables = variables
-        # return value
-        return_type = function.return_type
-        return_value = ir.Variable(return_type.reference.name, len(return_type.reference), 0)
-        function.ir_reference.return_value = return_value
-        # instructions
-        self.condition_label_number = 0
-        instructions = self.convert_block(function.block)
-        instructions.append(ir.RETURN(function.return_type.reference))
-        # function
-        function.ir_reference.instructions = instructions
-
-    def convert_builtin_function(self, function):
-        # scope variables
-        function_scope = function.parameters
-        variables = []
-        offset = 0
-        for parameter in function_scope:
-            new_variable = ir.Variable(parameter.kind.name, len(parameter.kind.reference), offset)
-            parameter.ir_reference = new_variable
-            variables.append(new_variable)
-            offset += len(parameter.kind.reference)
-        # return value
-        return_type = function.return_type
-        return_value = ir.Variable(return_type.reference.name, len(return_type.reference), 0)
-        # function
-        return ir.BuiltinFunction(function.name, return_value, variables)
-
-    def convert_block(self, block):
-        result = []
-        this_scope_variables = [variable.ir_reference for variable in block.scope.elements.values()]
-        print(this_scope_variables)
-        for statement in block.statements:
-            result.extend(self.convert_statement(statement))
-        result.append(ir.DROP_VARIABLES(this_scope_variables))
-        return result
+        self.current_scope = function.variables
+        # print(function.name, function.variables)
+        self.result.text.add(ir.LABEL(function.name))
+        self.result.text.add(ir.FUNCTION_PRELUDE())
+        self.convert_statements(function.statements)
+        self.result.text.add(ir.FUNCTION_END())
+    
+    def convert_statements(self, statements):
+        for statement in statements:
+            self.convert_statement(statement)
 
     def convert_statement(self, statement):
-        result = []
-        if isinstance(statement, ast.VariableDeclaration):
-            result.extend(self.convert_expression(statement.expression))
-            result.append(ir.STORE_VARIABLE(statement.reference.ir_reference))
+        if isinstance(statement, ast.Expression):
+            self.convert_expression(statement)
+        elif isinstance(statement, ast.VariableDeclaration):
+            self.convert_variable_declaration(statement)
         elif isinstance(statement, ast.Return):
-            result.extend(self.convert_expression(statement.expression))
-            result.append(ir.DROP_VARIABLES([variable.ir_reference for variable in statement.drop_variables]))
-            result.append(ir.RETURN(statement.expression.kind))
-        elif isinstance(statement, ast.Expression):
-            result.extend(self.convert_expression(statement))
-            result.append(ir.DROP_EXPRESSION(statement.kind))
+            self.convert_return(statement)
         elif isinstance(statement, ast.IfStatement):
-            result.extend(self.convert_if_statement(statement))
-        return result
-
+            self.convert_if_statement(statement)
+    
     def convert_expression(self, expression):
-        result = []
-        if isinstance(expression, ast.Number):
-            result.append(ir.LOAD_VALUE(expression))
-        elif isinstance(expression, ast.Bool):
-            result.append(ir.LOAD_VALUE(expression))
-        elif isinstance(expression, ast.String):
-            id = self.result.rodata.add_string_litteral(expression.value)
-            result.append(ir.LOAD_STRING_LITTERAL(id))
-        elif isinstance(expression, ast.FunctionCall):
-            result.append(ir.PREPARE_RETURN(expression.reference.ir_reference.return_size))
-            for argument in expression.arguments:
-                result.extend(self.convert_expression(argument))
-            if isinstance(expression.reference, ast.BuiltinFunction):
-                func_name = expression.name
-            else:
-                func_name = f"function_{hashlib.md5(expression.name.encode()).hexdigest()}"
-            result.append(ir.PREPARE_SCOPE(expression.reference.ir_reference.scope_size))
-            result.append(ir.CALL_FUNCTION(func_name))
-            result.append(ir.POP_SCOPE(expression.reference.ir_reference.scope_size))
-        elif isinstance(expression, ast.VariableReference):
-            result.append(ir.LOAD_VARIABLE(expression.reference.ir_reference))
+        if isinstance(expression, ast.FunctionCall):
+            self.convert_function_call(expression)
         elif isinstance(expression, ast.ClassmethodCall):
-            func_name = f"_{expression.typename}__{expression.function_name}"
-            result.append(ir.PREPARE_RETURN(expression.func_reference.ir_reference.return_size))
-            for argument in expression.arguments:
-                result.extend(self.convert_expression(argument))
-            result.append(ir.PREPARE_SCOPE(expression.func_reference.ir_reference.scope_size))
-            result.append(ir.CALL_FUNCTION(func_name))
-            result.append(ir.POP_SCOPE(expression.func_reference.ir_reference.scope_size))
-        return result
+            self.convert_classmethod_call(expression)
+        elif isinstance(expression, ast.String):
+            string_id = self.result.rodata.add_string_litteral(expression.value)
+            string_label = f"string_{string_id}"
+            self.result.text.add(ir.LOAD_STRING_LITTERAL(string_label, len(expression.value)))
+        elif isinstance(expression, ast.Number):
+            self.result.text.add(ir.LOAD_VALUE(int(expression.value)))
+        elif isinstance(expression, ast.Bool):
+            self.result.text.add(ir.LOAD_VALUE(expression.value))
+        elif isinstance(expression, ast.VariableReference):
+            self.convert_variable_reference(expression)
+        elif isinstance(expression, ast.MakeRef):
+            self.convert_make_ref(expression)
+        elif isinstance(expression, ast.DeRef):
+            self.convert_deref(expression)
+
+    def convert_function_call(self, expression):
+        func_name = expression.name
+        function = self.ir.all_functions[func_name]
+        self._convert_function_call(expression, function)
+
+    def convert_classmethod_call(self, expression):
+        func_name = f"{expression.struct_name}::{expression.func_name}"
+        function = self.ir.all_functions[func_name]
+        self._convert_function_call(expression, function)
+
+    def _convert_function_call(self, expression, function):
+        new_func_name = function.name
+        self.result.text.add(ir.PREPARE_RETURN(function.return_size))
+        self.result.text.add(ir.PREPARE_SCOPE(function.scope_size))
+        for argument in expression.arguments:
+            self.convert_argument(argument, function)
+        self.result.text.add(ir.CALL_FUNCTION(new_func_name))
+        self.result.text.add(ir.POP_SCOPE(function.scope_size))
+
+    def convert_argument(self, argument, function):
+        variable = function.variables[argument.variable_id]
+        self.convert_expression(argument.expression)
+        self.result.text.add(ir.STORE_ARGUMENT(variable.offset, variable.size))
+
+    def convert_variable_declaration(self, statement):
+        self.convert_expression(statement.expression)
+        variable = self.current_scope[statement.variable_id]
+        self.result.text.add(ir.STORE_VARIABLE(variable.offset, variable.size))
+
+    def convert_return(self, statement):
+        self.convert_expression(statement.expression)
+        expr_len = self.ir.types[statement.expression.kind.type_name].stack_size
+        self.result.text.add(ir.RETURN(expr_len))
+
+    def convert_variable_reference(self, expression):
+        variable = self.current_scope[expression.variable_id]
+        self.result.text.add(ir.LOAD_VARIABLE(variable.offset, variable.size))
+
+    def convert_make_ref(self, expression):
+        variable = self.current_scope[expression.variable_id]
+        self.result.text.add(ir.LOAD_REF(variable.offset))
+
+    def convert_deref(self, expression):
+        variable = self.current_scope[expression.variable_id]
+        self.result.text.add(ir.LOAD_DEREF(variable.offset, 8))
 
     def convert_if_statement(self, statement):
-        result = []
-        result.extend(self.convert_expression(statement.condition))
-        result.append(ir.POP_JMP_IF_FALSE(statement.condition.kind, self.condition_label_number))
-        result.extend(self.convert_block(statement.block))
-        result.append(ir.LABEL(self.condition_label_number))
-        self.condition_label_number += 1
-        return result
+        if_label_name = f".if__{self.condition_number}"
+        else_label_name = f".else__{self.condition_number}"
+        self.condition_number += 1
+        self.result.text.add(ir.LABEL(if_label_name))
+        self.convert_expression(statement.condition)
+        size = self.ir.types["Bool"].stack_size
+        self.result.text.add(ir.POP_JMP_IF_FALSE(size, else_label_name))
+        self.convert_statements(statement.block.statements)
+        self.result.text.add(ir.LABEL(else_label_name))

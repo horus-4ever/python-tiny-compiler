@@ -30,3 +30,10 @@ class Root(AST):
             **self.structures,
             **self.builtin_structures
         }
+
+    @property
+    def all_functions(self):
+        return {
+            **self.functions,
+            **self.builtin_functions
+        }

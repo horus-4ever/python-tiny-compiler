@@ -6,29 +6,47 @@ class Expression(Statement):
         self.kind = None
 
 
-class VariableReference(Expression):
-    def __init__(self, name, reference=None):
+class MakeRef(Expression):
+    def __init__(self, name):
         super().__init__()
         self.name = name
-        self.reference = reference
+        self.variable_id = None
+
+
+class DeRef(Expression):
+    def __init__(self, name):
+        super().__init__()
+        self.name = name
+        self.variable_id = None
+
+
+class VariableReference(Expression):
+    def __init__(self, name):
+        super().__init__()
+        self.name = name
+        self.variable_id = None
 
 
 class FunctionCall(Expression):
-    def __init__(self, name, arguments, reference=None):
+    def __init__(self, name, arguments):
         super().__init__()
         self.name = name
         self.arguments = arguments
-        self.reference = reference
+
+
+class Argument(Expression):
+    def __init__(self, expression):
+        super().__init__()
+        self.expression = expression
+        self.variable_id = 0
 
 
 class ClassmethodCall(Expression):
-    def __init__(self, typename, function_name, arguments):
+    def __init__(self, type_name, func_name, arguments):
         super().__init__()
-        self.typename = typename
-        self.function_name = function_name
+        self.struct_name = type_name
+        self.func_name = func_name
         self.arguments = arguments
-        self.type_reference = None
-        self.func_reference = None
 
 
 class StructureInstanciation(Expression):
@@ -36,7 +54,6 @@ class StructureInstanciation(Expression):
         super().__init__()
         self.name = name
         self.arguments = arguments
-        self.reference = None
 
 
 class Litteral(Expression):

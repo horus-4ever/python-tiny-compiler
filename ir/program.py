@@ -25,16 +25,15 @@ class RODATA(Segment):
 class TEXT(Segment):
     def __init__(self):
         self.extern_functions = set()
-        self.functions = {}
-        self.entry_point = None
+        self.instructions = []
 
-    def add_extern_function(self, function_name):
-        pass
+    def add(self, *instructions):
+        self.instructions.extend(instructions)
 
     def __repr__(self):
-        result = ".text\n"
-        for name, function in self.functions.items():
-            result += f"{repr(function)}\n"
+        result = ""
+        for instruction in self.instructions:
+            result += f"{instruction}\n"
         return result
 
 

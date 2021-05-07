@@ -14,8 +14,9 @@ class DROP_EXPRESSION(Instruction):
 
 
 class LOAD_STRING_LITTERAL(Instruction):
-    def __init__(self, id):
-        self.id = id
+    def __init__(self, string_label, size):
+        self.string_label = string_label
+        self.size = size
 
 
 class PREPARE_RETURN(Instruction):
@@ -39,36 +40,59 @@ class LOAD_VALUE(Instruction):
 
 
 class LOAD_VARIABLE(Instruction):
-    def __init__(self, variable):
-        self.variable = variable
+    def __init__(self, variable_offset, size):
+        self.variable_offset = variable_offset
+        self.size = size
+
+
+class LOAD_DEREF(Instruction):
+    def __init__(self, variable_offset, size):
+        self.variable_offset = variable_offset
+        self.size = size
+
+
+class LOAD_REF(Instruction):
+    def __init__(self, variable_offset):
+        self.variable_offset = variable_offset
 
 
 class CALL_FUNCTION(Instruction):
-    def __init__(self, function):
-        self.function = function
+    def __init__(self, func_name):
+        self.func_name = func_name
 
 
 class STORE_VARIABLE(Instruction):
-    def __init__(self, variable):
-        self.variable = variable
+    def __init__(self, variable_offset, size):
+        self.variable_offset = variable_offset
+        self.size = size
+        
+
+class STORE_ARGUMENT(Instruction):
+    def __init__(self, offset, size):
+        self.offset = offset
+        self.size = size
 
 
 class RETURN(Instruction):
-    def __init__(self, expr_kind):
-        self.expr_kind = expr_kind
+    def __init__(self, size):
+        self.size = size
 
 
 class POP_JMP_IF_FALSE(Instruction):
-    def __init__(self, expr_kind, label):
-        self.expr_kind = expr_kind
-        self.label = label
+    def __init__(self, size, label_name):
+        self.size = size
+        self.label_name = label_name
 
 
 class LABEL(Instruction):
-    def __init__(self, label):
-        self.label = label
+    def __init__(self, name):
+        self.name = name
 
 
+class FUNCTION_PRELUDE(Instruction):
+    pass
+class FUNCTION_END(Instruction):
+    pass
 class SAVE(Instruction):
     pass
 class RESTORE(Instruction):

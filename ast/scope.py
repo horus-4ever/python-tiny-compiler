@@ -24,12 +24,15 @@ class Scope(AST):
         return key in self.elements
 
     def flatten(self):
-        result = []
+        result = {}
         for element in self.elements.values():
-            result.append(element)
+            result[id(element)] = element
         for child in self.children:
-            result.extend(child.flatten())
+            result.update(child.flatten())
         return result
 
     def __len__(self):
         return sum(map(len, self.flatten()))
+
+    def __repr__(self):
+        return repr(self.elements)

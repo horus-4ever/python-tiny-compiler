@@ -2,21 +2,23 @@ from .ast import AST
 
 
 class Structure(AST):
-    def __init__(self, name, fields, methods):
+    def __init__(self, name, fields, methods, implements=()):
         self.name = name
         self.fields = fields
         self.methods = methods
+        self.implements = implements
 
     def __len__(self):
         return 0
 
 
 class BuiltinStructure(AST):
-    def __init__(self, name, stack_size, fields, builtin_methods):
+    def __init__(self, name, stack_size, fields, builtin_methods, implements=()):
         self.name = name
         self.stack_size = stack_size
         self.fields = fields
         self.methods = builtin_methods
+        self.implements = implements
 
     def __len__(self):
         return self.stack_size

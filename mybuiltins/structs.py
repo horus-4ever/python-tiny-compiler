@@ -13,22 +13,25 @@ builtin_structs = {
         builtin_methods={
             "to_string": BuiltinFunction(
                 "to_string",
-                [Parameter("number", TypeReference("Int", None))],
-                TypeReference("String", None)
+                [Parameter("number", NormalType("Int"))],
+                NormalType("String")
             )
-        }
+        },
+        implements=("Copy",)
     ),
     "Empty": BuiltinStructure(
         "Empty",
         stack_size=0,
         fields={},
-        builtin_methods={}
+        builtin_methods={},
+        implements=("Copy",)
     ),
     "Str": BuiltinStructure(
         "Str",
         stack_size=8,
         fields={},
-        builtin_methods={}
+        builtin_methods={},
+        implements=("Copy",)
     ),
     "String": BuiltinStructure(
         "String",
@@ -37,8 +40,8 @@ builtin_structs = {
         builtin_methods={
             "from": BuiltinFunction(
                 "from",
-                [Parameter("string", TypeReference("Str", None))],
-                TypeReference("String", None)
+                [Parameter("string", NormalType("Str"))],
+                NormalType("String")
             )
         }
     ),
@@ -46,6 +49,7 @@ builtin_structs = {
         "Bool",
         stack_size=4,
         fields={},
-        builtin_methods={}
+        builtin_methods={},
+        implements=("Copy",)
     )
 }

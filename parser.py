@@ -55,7 +55,7 @@ class Parser(languageVisitor):
         if kind.ref_type():
             type = RefType(kind.ref_type().normal_type().IDENTIFIER().getText())
         elif kind.normal_type():
-            type = TypeReference(kind.normal_type().IDENTIFIER().getText())
+            type = NormalType(kind.normal_type().IDENTIFIER().getText())
         return type
 
     def visitBlock(self, ctx):
@@ -79,7 +79,6 @@ class Parser(languageVisitor):
             return self.visitBlock(ctx.block())
         elif ctx.condition():
             return self.visitCondition(ctx.condition())
-        
 
     def visitReturn_statement(self, ctx):
         return Return(self.visitExpression(ctx.expression()))
@@ -87,15 +86,24 @@ class Parser(languageVisitor):
     def visitCondition(self, ctx):
         condition = self.visitExpression(ctx.expression())
         block = self.visitBlock(ctx.block())
-        return IfStatement(condition, block)
+        else_block = self.visitElse_block(ctx.else_block())
+        return IfStatement(condition, block, else_block)
+
+    def visitElse_block(self, ctx):
+        if ctx is None:
+            return None
+        if ctx.condition():
+            return self.visitCondition(ctx.condition())
+        else:
+            return self.visitBlock(ctx.block())
 
     def visitVariable_declaration(self, ctx):
         variable_name = ctx.IDENTIFIER().getText()
         expression = self.visitExpression(ctx.expression())
-        type = ctx.type_annotation()
-        if type:
-            type = self.visitType_annotation(ctx.type_annotation())
-        return VariableDeclaration(variable_name, expression, type=type)
+        type_name = ctx.type_annotation()
+        if type_name:
+            type_name = self.visitType_annotation(ctx.type_annotation())
+        return VariableDeclaration(variable_name, expression, type_name)
 
     def visitExpression(self, ctx):
         if ctx.factor():
@@ -106,6 +114,10 @@ class Parser(languageVisitor):
             return self.visitClassmethod_call(ctx.classmethod_call())
         elif ctx.structure_instantiation():
             return self.visitStructure_instantiation(ctx.structure_instantiation())
+        elif ctx.make_ref():
+            return self.visitMake_ref(ctx.make_ref())
+        elif ctx.deref():
+            return self.visitDeref(ctx.deref())
 
     def visitStructure_instantiation(self, ctx):
         structure_name = ctx.IDENTIFIER().getText()
@@ -119,6 +131,12 @@ class Parser(languageVisitor):
         for name, expression in zip(ctx.IDENTIFIER(), ctx.expression()):
             result[name.getText()] = FieldArgument(name.getText(), self.visitExpression(expression))
         return result
+
+    def visitMake_ref(self, ctx):
+        return MakeRef(ctx.IDENTIFIER().getText())
+
+    def visitDeref(self, ctx):
+        return DeRef(ctx.IDENTIFIER().getText())
 
     def visitFactor(self, ctx):
         if ctx.NUMBER():
@@ -135,12 +153,12 @@ class Parser(languageVisitor):
     def visitFunction_call(self, ctx):
         name = ctx.IDENTIFIER().getText()
         arguments = self.visitArguments(ctx.arguments())
-        return FunctionCall(name, arguments, None)
+        return FunctionCall(name, arguments)
     
     def visitArguments(self, ctx):
         if ctx is None:
             return []
-        return [self.visitExpression(expression) for expression in ctx.expression()]
+        return [Argument(self.visitExpression(expression)) for expression in ctx.expression()]
 
     def visitClassmethod_call(self, ctx):
         typename = ctx.normal_type().getText()

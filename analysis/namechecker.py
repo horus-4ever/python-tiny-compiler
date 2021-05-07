@@ -25,6 +25,7 @@ class NameChecker:
         return None
 
     def check(self):
+        print(self.ast.structures)
         # structures
         for name, structure in self.ast.builtin_structures.items():
             self.check_builtin_structure(structure)
@@ -35,7 +36,18 @@ class NameChecker:
             self.check_builtin_function(function)
         for name, function in self.ast.functions.items():
             self.check_function(function)
+        # once it is checked, inline function scopes
+        for name, function in self.ast.functions.items():
+            self.flatten_function_scope(function)
+        for name, structure in self.ast.structures.items():
+            for name, method in structure.methods.items():
+                self.flatten_function_scope(method)
         return self.ast
+
+    def flatten_function_scope(self, function):
+        scope = function.block.scope
+        new_scope = scope.flatten()
+        function.scope = new_scope
 
     def check_structure(self, structure):
         for name, field in structure.fields.items():
@@ -60,20 +72,24 @@ class NameChecker:
     
     def check_parameters(self, function):
         for parameter in function.parameters:
-            type_name = parameter.kind.name
-            if type_name not in self.ast.all_types:
+            kind = parameter.kind
+            if kind.type_name not in self.ast.all_types:
                 raise Exception(f"Cannot find type '{type_name}' in the global scope.")
             if isinstance(function, ast.Function):
                 if parameter.name in function.block.scope:
                     raise Exception(f"Variable '{parameter.name}' already defined.")
-                function.block.scope[parameter.name] = ast.Variable(
-                    function.block.scope,
-                    parameter.name,
-                    None
-                )
+                scope = function.block.scope
+            else:
+                scope = function.scope
+            variable = ast.Variable(
+                parameter.name,
+                kind
+            )
+            scope[parameter.name] = variable
+            parameter.variable_id = id(variable)
 
     def check_return_type(self, function):
-        type_name = function.return_type.name
+        type_name = function.return_type.type_name
         if type_name not in self.ast.all_types:
             raise Exception(f"Cannot find type '{type_name}' in the global scope.")
 
@@ -103,56 +119,51 @@ class NameChecker:
         self.check_expression(statement.expression)
         if statement.name in self.current_scope:
             raise Exception(f"Variable '{statement.name}' already defined.")
-        self.current_scope[statement.name] = ast.Variable(
-            None,
-            statement.name,
-            statement.type
-        )
-        statement.reference = self.current_scope[statement.name]
-        if statement.type is not None:
-            type = statement.type
-            if type.name not in self.global_scope:
-                raise Exception(f"Unkown type '{type.name}'")
-            type.reference = self.global_scope[type.name]
+        variable = ast.Variable(statement.name, statement.kind)
+        self.current_scope[statement.name] = variable
+        statement.variable_id = id(variable)
+        if statement.kind is not None:
+            if statement.kind.type_name not in self.ast.all_types:
+                raise Exception(f"Unkown type '{statement.type_name}'")
 
     def check_expression(self, expression):
-        # print("\n===================\nGOT IT\n====================")
-        if isinstance(expression, ast.VariableReference):
-            scope = self.scope_lookup(expression.name, kind=ast.Variable)
-            if scope is None:
-                raise Exception(f"Variable '{expression.name}' is not defined.")
-            else:
-                print(expression.name)
-                expression.reference = scope[expression.name]
+        if isinstance(expression, (ast.VariableReference, ast.MakeRef, ast.DeRef)):
+            self.check_variable_reference(expression)
         elif isinstance(expression, ast.FunctionCall):
-            if expression.name in self.global_scope:
-                expression.reference = self.global_scope[expression.name]
-            else:
-                raise Exception(f"No function named '{expression.name}'")
-            for argument in expression.arguments:
-                self.check_expression(argument)
+            self.check_function_call(expression)
         elif isinstance(expression, ast.ClassmethodCall):
             self.check_classmethod_call(expression)
         elif isinstance(expression, ast.StructureInstanciation):
             self.check_structure_instanciation(expression)
 
+    def check_variable_reference(self, expression):
+        scope = self.scope_lookup(expression.name, kind=ast.Variable)
+        if scope is None:
+            raise Exception(f"Variable '{expression.name}' is not defined.")
+        else:
+            expression.variable_id = id(scope[expression.name])
+
     def check_if_statement(self, statement):
         self.check_expression(statement.condition)
         self.check_block(statement.block)
 
-    def check_classmethod_call(self, expression):
-        if expression.typename in self.global_scope:
-            expression.type_reference = self.global_scope[expression.typename]
-        if expression.function_name in expression.type_reference.methods:
-            expression.func_reference = expression.type_reference.methods[expression.function_name]
-        else:
-            raise Exception(f"Not such method '{expression.function_name}' on type '{expression.typename}'")
+    def check_function_call(self, expression):
+        if expression.name not in self.ast.all_functions:
+            raise Exception(f"No function named '{expression.name}'")
         for argument in expression.arguments:
-            self.check_expression(argument)
+            self.check_expression(argument.expression)
+
+    def check_classmethod_call(self, expression):
+        if expression.struct_name not in self.ast.all_types:
+            raise Exception(f"No such type '{expression.struct_name}'.")
+        if expression.func_name not in self.ast.all_types[expression.struct_name].methods:
+            raise Exception(f"No such method '{expression.func_name}' on type '{expression.struct_name}'")
+        for argument in expression.arguments:
+            self.check_expression(argument.expression)
 
     def check_structure_instanciation(self, expression):
-        if expression.name in self.global_scope:
-            expression.reference = self.global_scope[expression.name]
+        if expression.name not in self.ast.all_types:
+            raise Exception(f"No such type '{expression.name}'.")
         for name, argument in expression.arguments.items():
             self.check_expression(argument.expression)
         
