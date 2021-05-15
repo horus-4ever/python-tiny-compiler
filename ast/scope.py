@@ -1,7 +1,7 @@
 from .ast import AST
 
 
-class Scope(AST):
+class Scope:
     def __init__(self):
         self.depth = 0
         self.parent = None

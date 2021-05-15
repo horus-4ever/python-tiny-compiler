@@ -2,12 +2,16 @@ from .ast import AST
 
 
 class Type(AST):
-    def __init__(self, name, size):
+    pass
+
+
+class GenericType(Type):
+    def __init__(self, name, implements):
         self.name = name
-        self.size = size
+        self.implements = implements
 
 
-class NormalType(AST):
+class NormalType(Type):
     def __init__(self, name):
         self.type_name = name
 
@@ -15,7 +19,7 @@ class NormalType(AST):
         return self.type_name == other.type_name and type(self) is type(other)
 
 
-class RefType(AST):
+class RefType(Type):
     def __init__(self, name):
         self.type_name = name
 

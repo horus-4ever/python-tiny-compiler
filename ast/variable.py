@@ -13,4 +13,5 @@ class Variable(AST):
     def __init__(self, name, kind=None):
         self.name = name
         self.kind = kind
-        self.is_valid = True
+        self.is_moved = False
+        self.is_partially_moved = False

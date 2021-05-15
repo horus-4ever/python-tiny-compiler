@@ -32,10 +32,12 @@ memcpy:
     pop esi
     ret
 
-
 print:
     push ebp
     mov ebp, esp
+
+    push esi
+    mov esi, dword[esi]
 
     mov	edx, [esi+4]; message length
     mov	ecx, [esi]	; message to write
@@ -43,6 +45,33 @@ print:
     mov	eax,4		; system call number (sys_write)
     int	0x80		; call kernel
 
+    pop esi
+    leave
+    ret
+
+println:
+    push ebp
+    mov ebp, esp
+
+    push esi
+    mov esi, dword[esi]
+
+    mov	edx, [esi+4]; message length
+    mov	ecx, [esi]	; message to write
+    mov	ebx,1		; file descriptor (stdout)
+    mov	eax,4		; system call number (sys_write)
+    int	0x80		; call kernel
+
+    sub esp, 1
+    mov byte[esp], 10
+    mov edx, 1
+    mov ecx, esp
+    mov ebx, 1
+    mov eax, 4
+    int 0x80
+    add esp, 1
+
+    pop esi
     leave
     ret
 
@@ -114,6 +143,54 @@ _Int__to_string:
     leave
     ret
 
+_Int__add:
+    mov eax, dword[esi]
+    mov edx, dword[esi+4]
+    add eax, edx
+    mov dword[edi], eax
+    ret
+
+_Int__sub:
+    mov eax, dword[esi]
+    mov edx, dword[esi+4]
+    sub eax, edx
+    mov dword[edi], eax
+    ret
+
+_Int__mul:
+    mov eax, dword[esi]
+    mov ecx, dword[esi+4]
+    mov edx, 0
+    mul ecx
+    mov dword[edi], eax
+    ret
+
+_Int__eq:
+    mov ecx, dword[esi]
+    mov eax, dword[ecx]
+    mov ecx, dword[esi+4]
+    mov edx, dword[ecx]
+    cmp eax, edx
+    je .end
+    mov dword[edi], 0
+    ret
+.end:
+    mov dword[edi], 1
+    ret
+
+_Int__neq:
+    mov ecx, dword[esi]
+    mov eax, dword[ecx]
+    mov ecx, dword[esi+4]
+    mov edx, dword[ecx]
+    cmp eax, edx
+    jne .end
+    mov dword[edi], 0
+    ret
+.end:
+    mov dword[edi], 1
+    ret
+
 _String__from:
     push ebp
     mov ebp, esp
@@ -140,6 +217,57 @@ _String__from:
 
     pop esi
     pop edi
+    leave
+    ret
+
+_String__add:
+    push ebp
+    mov ebp, esp
+
+    push edi
+    push esi
+
+    mov eax, esi
+    mov esi, dword[eax]
+    mov edi, dword[eax+4]
+
+    mov eax, dword[esi+4]
+    mov edx, dword[edi+4]
+    add edx, eax
+
+    push edx
+
+    push esi
+    push edi
+    push edx
+    call malloc
+    pop edx
+    pop edi
+    pop esi
+
+    pusha
+    mov edx, eax
+    mov eax, dword[esi]
+    mov ecx, dword[esi+4]
+    call memcpy
+    popa
+
+    pusha
+    mov edx, dword[esi+4]
+    lea edx, [eax+edx]
+    mov eax, dword[edi]
+    mov ecx, dword[edi+4]
+    call memcpy
+    popa
+
+    pop edx
+
+    mov dword [esi], eax
+    mov dword [esi+4], edx
+
+    pop esi
+    pop edi
+
     leave
     ret
 
@@ -271,10 +399,26 @@ class ToASM:
             result += f"\tlea eax, [ebp+16+{instruction.variable_offset}]\n"
             result += f"\tmov dword[esp], eax\n"
         elif isinstance(instruction, ir.LOAD_DEREF):
+            result += f"\tmov eax, dword [esp]\n"
+            result += f"\tadd esp, 4\n"
             result += f"\tsub esp, {instruction.size}\n"
-            result += f"\tlea eax, [ebp+16+{instruction.variable_offset}]\n"
             result += f"\tmov edx, esp\n"
-            result += f"\tmov eax, [eax]\n"
+            result += f"\tmov ecx, {instruction.size}\n"
+            result += f"\tcall memcpy\n"
+        elif isinstance(instruction, ir.GET_ATTR):
+            result += f"\tlea edx, [esp+{instruction.expr_size}-{instruction.size}]\n"
+            result += f"\tlea eax, [esp+{instruction.expr_size}-{instruction.size}-{instruction.offset}]\n"
+            result += f"\tmov ecx, {instruction.size}\n"
+            result += f"\tcall memcpy\n"
+            result += f"\tmov eax, {instruction.expr_size}\n"
+            result += f"\tsub eax, {instruction.size}\n"
+            result += f"\tadd esp, eax\n"
+        elif isinstance(instruction, ir.GET_ATTR_DEREF):
+            result += f"\tmov ecx, dword[esp]\n"
+            result += f"\tadd esp, 4\n"
+            result += f"\tsub esp, {instruction.size}\n"
+            result += f"\tmov edx, esp\n"
+            result += f"\tlea eax, [ecx+{instruction.expr_size}-{instruction.size}-{instruction.offset}]\n"
             result += f"\tmov ecx, {instruction.size}\n"
             result += f"\tcall memcpy\n"
         elif isinstance(instruction, ir.STORE_ARGUMENT):
@@ -285,6 +429,13 @@ class ToASM:
             result += f"\tadd esp, {instruction.size}\n"
         elif isinstance(instruction, ir.STORE_VARIABLE):
             result += f"\tlea edx, [ebp+16+{instruction.variable_offset}]\n"
+            result += f"\tmov eax, esp\n"
+            result += f"\tmov ecx, {instruction.size}\n"
+            result += f"\tcall memcpy\n"
+            result += f"\tadd esp, {instruction.size}\n"
+        elif isinstance(instruction, ir.STORE_VARIABLE_DEREF):
+            result += f"\tlea edx, [ebp+16+{instruction.variable_offset}]\n"
+            result += f"\tmov edx, [edx]\n"
             result += f"\tmov eax, esp\n"
             result += f"\tmov ecx, {instruction.size}\n"
             result += f"\tcall memcpy\n"
@@ -300,80 +451,6 @@ class ToASM:
             result += f"\tadd esp, 4\n"
             result += f"\tcmp eax, 0\n"
             result += f"\tje {instruction.label_name}\n"
+        elif isinstance(instruction, ir.JMP):
+            result += f"\tjmp {instruction.label_name}\n"
         return result
-
-    def generate_function(self, function):
-        function_name = function.name#"function_" + hashlib.md5(function.name.encode()).hexdigest()
-        function_code = ""
-        for instruction in function.instructions:
-            if isinstance(instruction, ir.PREPARE_RETURN):
-                function_code += f"\tsub esp, {instruction.size}\n"
-            elif isinstance(instruction, ir.PREPARE_SCOPE):
-                function_code += "\tpush esi\n"
-                function_code += "\tpush edi\n"
-                function_code += f"\tlea esi, [esp+8]\n"
-                function_code += f"\tlea edi, [esp+8+{instruction.scope_size}]\n"
-            elif isinstance(instruction, ir.CALL_FUNCTION):
-                func_name = instruction.function
-                """
-                function_code += "\tpush esi\n"
-                function_code += "\tpush edi\n"
-                function_code += f"\tlea esi, [esp+8]\n"
-                function_code += f"\tlea edi, [esp+8+{instruction.function.scope_size}]\n"
-                """
-                function_code += f"\tcall {func_name}\n"
-            elif isinstance(instruction, ir.POP_SCOPE):
-                function_code += "\tpop edi\n"
-                function_code += "\tpop esi\n"
-                function_code += f"\tadd esp, {instruction.scope_size}\n"
-            elif isinstance(instruction, ir.LOAD_VALUE):
-                function_code += f"\tsub esp, 4\n"
-                function_code += f"\tmov dword[esp], {int(instruction.value.value)}\n"
-            elif isinstance(instruction, ir.LOAD_STRING_LITTERAL):
-                function_code += f"\tsub esp, 8\n"
-                function_code += f"\tmov dword[esp], _{instruction.id}\n"
-                function_code += f"\tmov dword[esp+4], {len(self.code.rodata.string_litterals[instruction.id])}\n"
-            elif isinstance(instruction, ir.STORE_VARIABLE):
-                if len(instruction.variable) == 4:
-                    function_code += f"\tmov eax, dword[esp]\n"
-                    function_code += f"\tmov dword[esi+{instruction.variable.offset}], eax\n"
-                    function_code += f"\tadd esp, {len(instruction.variable)}\n"
-                else: # instruction.variable.typename == "String":
-                    function_code += f"\tlea edx, [esi+{instruction.variable.offset}]\n"
-                    function_code += f"\tmov eax, esp\n"
-                    function_code += f"\tmov ecx, {len(instruction.variable)}\n"
-                    function_code += f"\tcall memcpy\n"
-            elif isinstance(instruction, ir.LOAD_VARIABLE):
-                if len(instruction.variable) == 4:
-                    function_code += f"\tsub esp, {len(instruction.variable)}\n"
-                    function_code += f"\tmov eax, dword[esi+{instruction.variable.offset}]\n"
-                    function_code += f"\tmov dword[esp], eax\n"
-                elif instruction.variable.typename == "String":
-                    function_code += f"\tsub esp, 8\n"
-                    function_code += f"\tpush esi\n"
-                    function_code += f"\tpush edi\n"
-                    function_code += f"\tlea esi, [esi+{instruction.variable.offset}]\n"
-                    function_code += f"\tlea edi, [esp+8]\n"
-                    function_code += f"\tcall _String__copy\n"
-                    function_code += f"\tpop edi\n"
-                    function_code += f"\tpop esi\n"
-            elif isinstance(instruction, ir.RETURN):
-                if len(instruction.expr_kind) == 4:
-                    function_code += f"\tmov eax, dword[esp]\n"
-                    function_code += f"\tmov dword[edi], eax\n"
-                elif instruction.expr_kind.name == "String":
-                    function_code += f"\tmov eax, esp\n"
-                    function_code += f"\tmov edx, edi\n"
-                    function_code += f"\tmov ecx, 8\n"
-                    function_code += f"\tcall memcpy\n"
-                function_code += "\tleave\n"
-                function_code += "\tret\n"
-            elif isinstance(instruction, ir.LABEL):
-                function_code += f".L{instruction.label}:\n"
-            elif isinstance(instruction, ir.POP_JMP_IF_FALSE):
-                function_code += f"\tmov eax, dword[esp]\n"
-                function_code += f"\tadd esp, 4\n"
-                function_code += f"\tcmp eax, 0\n"
-                function_code += f"\tje .L{instruction.label}\n"
-
-        return FUNCTION_BODY.format(function_name=function_name, function_code=function_code)

@@ -29,17 +29,37 @@ class BorrowChecker:
     def check_statement(self, statement):
         if isinstance(statement, ast.Expression):
             self.check_expression(statement)
+        elif isinstance(statement, (ast.WhileStatement, ast.IfStatement)):
+            self.check_expression(statement.condition)
+            self.check_block(statement.block)
+        elif isinstance(statement, ast.VariableDeclaration):
+            self.check_variable_declaration(statement)
+        elif isinstance(statement, ast.Assignement):
+            self.check_assignement(statement)
+
+    def check_variable_declaration(self, statement):
+        self.check_expression(statement.expression)
+
+    def check_assignement(self, statement):
+        self.check_expression(statement.expression)
+        variable = self.current_scope[statement.variable_id]
+        variable.is_moved = False
+        variable.is_partially_moved = False
 
     def check_expression(self, expression):
-        kind = expression.kind
+        kind = self.ast.all_types[expression.kind.type_name]
         if isinstance(expression, ast.VariableReference):
             variable = self.current_scope[expression.variable_id]
-            if kind in (ast.NormalType("Empty"), ast.NormalType("Int"), ast.NormalType("Bool")):
+            if "Copy" in kind.implements:
                 return
-            elif not variable.is_valid:
+            elif variable.is_moved or variable.is_partially_moved :
                 raise Exception(f"Variable '{variable.name}' used after move.")
             else:
-                variable.is_valid = False
+                variable.is_moved = True
         elif isinstance(expression, (ast.FunctionCall, ast.ClassmethodCall)):
             for argument in expression.arguments:
                 self.check_expression(argument.expression)
+        elif isinstance(expression, ast.DeRef):
+            self.check_expression(expression.expression)
+            if not "Copy" in kind.implements:
+                raise Exception(f"Cannot dereference '{expression.name}' of type '{kind.name}' which does not implement 'Copy'.")

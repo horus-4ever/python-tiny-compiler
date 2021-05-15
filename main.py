@@ -10,8 +10,24 @@ from codegen import NameConverter, ToIR, ToASM
 # antlr4 -o antlr_output/ -Dlanguage=Python3 -visitor language.g4
 # ('<' normal_type (',' normal_type)* '>')? ;
 
-def main(argv):
-    with open("code_examples/test_1") as doc:
+
+def read_builtins(PATH):
+    with open(PATH) as doc:
+        CODE = doc.read()
+    input = InputStream(CODE)
+    lexer = languageLexer(input)
+    tokens = CommonTokenStream(lexer)
+    parser = languageParser(tokens)
+    tree = parser.entry_point()
+    ast_parser = Parser()
+    ast = ast_parser.visitEntry_point(tree)
+    return ast
+
+
+try:
+    builtin_ast = read_builtins("mybuiltins/builtins")
+
+    with open(sys.argv[1]) as doc:
         CODE = doc.read()
 
     input = InputStream(CODE)
@@ -25,7 +41,8 @@ def main(argv):
 
     ast_parser = Parser()
     ast = ast_parser.visitEntry_point(tree)
-    print(ast.functions, "\n", ast.structures)
+    ast.set_builtins(builtin_ast)
+    print(ast.functions, "\n", ast.structures, "\n", ast.traits)
 
     name_checker = NameChecker(ast)
     ast = name_checker.check()
@@ -45,13 +62,15 @@ def main(argv):
 
     ir_converter = ToIR(ir)
     ir = ir_converter.convert()
-    print(ir)
+    # print(ir)
     
     assembly = ToASM(ir)
     assembly = assembly.to_asm()
     with open("out/out.s", "w") as doc:
         doc.write(assembly)
+except Exception as e:
+    raise e
 
 
 if __name__ == '__main__':
-    main(sys.argv)
+    pass

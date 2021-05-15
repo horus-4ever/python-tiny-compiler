@@ -8,3 +8,4 @@ from .variable import *
 from .statement import *
 from .expression import *
 from .structure import *
+from .trait import *

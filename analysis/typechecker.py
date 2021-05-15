@@ -20,6 +20,25 @@ class TypeChecker:
     def check_structure(self, structure):
         for name, method in structure.methods.items():
             self.check_function(method)
+        self.check_implements(structure)
+
+    def check_implements(self, structure):
+        for implement in structure.implements:
+            trait = self.ast.traits[implement]
+            for func_name, trait_func in trait.functions.items():
+                if func_name not in structure.methods:
+                    raise Exception(f"Structure '{structure.name}' implements the '{trait.name}' trait but does not define the '{func_name}' function.")
+                method = structure.methods[func_name]
+                if len(method.parameters) != len(trait_func.parameters):
+                    raise Exception("Why ?")
+                for param2 in trait_func.parameters:
+                    for param1 in method.parameters:
+                        if type(param2.kind) is not type(param1.kind):
+                            raise Exception("Wrong types!")
+                        param2_type_name = param2.kind.type_name if param2.kind.type_name != "Self" else structure.name
+                        param1_type_name = param1.kind.type_name
+                        if param1_type_name != param2_type_name:
+                            raise Exception("Wrong types!")
 
     def check_function(self, function):
         self.current_scope = function.scope
@@ -50,6 +69,10 @@ class TypeChecker:
             self.check_expression(statement)
         elif isinstance(statement, ast.VariableDeclaration):
             self.check_variable_declaration(statement)
+        elif isinstance(statement, ast.Assignement):
+            self.check_assignement(statement)
+        elif isinstance(statement, ast.DerefAssignement):
+            self.check_deref_assignement(statement)
         elif isinstance(statement, ast.Return):
             self.check_expression(statement.expression)
             # print("aqh", statement.expression.type_name)
@@ -57,6 +80,8 @@ class TypeChecker:
             self.check_block(statement)
         elif isinstance(statement, ast.IfStatement):
             self.check_if_statement(statement)
+        elif isinstance(statement, ast.WhileStatement):
+            self.check_while_statement(statement)
 
     def check_expression(self, expression):
         if isinstance(expression, ast.Number):
@@ -68,18 +93,55 @@ class TypeChecker:
         elif isinstance(expression, ast.VariableReference):
             variable = self.current_scope[expression.variable_id]
             expression.kind = variable.kind
-        elif isinstance(expression, ast.MakeRef):
+        elif isinstance(expression, ast.LValueRef):
             variable = self.current_scope[expression.variable_id]
             expression.kind = ast.RefType(variable.kind.type_name)
-        elif isinstance(expression, ast.DeRef):
+        elif isinstance(expression, ast.RValueRef):
+            self.check_expression(expression.expression)
             variable = self.current_scope[expression.variable_id]
-            expression.kind = ast.NormalType(variable.kind.type_name)
+            variable.kind = expression.expression.kind
+            expression.kind = ast.RefType(variable.kind.type_name)
+        elif isinstance(expression, ast.DeRef):
+            self.check_deref(expression)
         elif isinstance(expression, ast.FunctionCall):
             self.check_function_call(expression)
         elif isinstance(expression, ast.ClassmethodCall):
             self.check_classmethod_call(expression)
+        elif isinstance(expression, ast.MethodCall):
+            self.check_method_call(expression)
         elif isinstance(expression, ast.StructureInstanciation):
             self.check_structure_instanciation(expression)
+        elif isinstance(expression, ast.BinaryExpression):
+            self.check_binary_expression(expression)
+        elif isinstance(expression, ast.GetAttribute):
+            self.check_get_attribute(expression)
+
+    def check_binary_expression(self, expression):
+        self.check_expression(expression.left)
+        self.check_expression(expression.right)
+        trait, function = expression.TRAIT, expression.METHOD
+        left_type_name = expression.left.kind.type_name
+        kind = self.ast.all_types[left_type_name]
+        method = kind.methods[function]
+        if trait not in kind.implements:
+            raise Exception(f"Type '{kind.name}' must implement the trait '{trait}' to use the corresponding operator.")
+        left_expected, right_expected = (parameter.kind for parameter in method.parameters)
+        left_kind, right_kind = expression.left.kind, expression.right.kind
+        if left_expected != left_kind or right_expected != right_kind:
+            raise Exception(f"Wrong types. ('{left_expected}', '{right_expected}') but got ('{left_kind}', '{right_kind}')")
+        expression.kind = method.return_type
+        method_call = ast.ClassmethodCall(left_type_name, function, [ast.Argument(expression.left), ast.Argument(expression.right)])
+        self.check_classmethod_call(method_call)
+        expression.classmethod_call = method_call
+
+    def check_get_attribute(self, expression):
+        self.check_expression(expression.expression)
+        kind = self.ast.all_types[expression.expression.kind.type_name]
+        attr_name = expression.name
+        if attr_name not in kind.fields:
+            raise Exception(f"Field '{attr_name}' not found on type '{kind}'.")
+        field = kind.fields[attr_name]
+        expression.kind = field.kind
 
     def check_variable_declaration(self, statement):
         self.check_expression(statement.expression)
@@ -90,6 +152,29 @@ class TypeChecker:
             variable = self.current_scope[statement.variable_id]
             statement.kind = statement.expression.kind
             variable.kind = statement.kind
+
+    def check_assignement(self, statement):
+        self.check_expression(statement.expression)
+        variable = self.current_scope[statement.variable_id]
+        if variable.kind != statement.expression.kind:
+            raise Exception(f"Wrong type in assignement. Left: '{variable.kind}', and Right: '{statement.expression.kind}'")
+
+    def check_deref_assignement(self, statement):
+        self.check_expression(statement.expression)
+        variable = self.current_scope[statement.variable_id]
+        if ast.NormalType(variable.kind.type_name) != statement.expression.kind:
+            raise Exception(f"Wrong type in assignement. Left: '{ast.NormalType(variable.kind.type_name)}', and Right: '{statement.expression.kind}'")
+
+    def check_deref(self, expression):
+        self.check_expression(expression.expression)
+        expr_kind = expression.expression.kind
+        if not isinstance(expr_kind, ast.RefType):
+            raise Exception(f"Cannot dereference non-ref expression.")
+        kind = self.ast.all_types[expr_kind.type_name]
+        if not "Copy" in kind.implements:
+            raise Exception(f"Cannot dereference expression of type '{kind.name}', which does not implement 'Copy'.")
+        expression.kind = ast.NormalType(kind.name)
+
 
     def check_function_call(self, expression):
         function = self.ast.all_functions[expression.name]
@@ -118,19 +203,43 @@ class TypeChecker:
                 raise Exception(f"Wrong type. Expected '{parameter.kind}', got '{argument.kind}'.")
         expression.kind = method.return_type
 
+    def check_method_call(self, expression):
+        self.check_expression(expression.expression)
+        kind = self.ast.all_types[expression.expression.kind.type_name]
+        if expression.func_name not in kind.methods:
+            raise Exception(f"No such method '{expression.func_name}' on struct '{kind.name}'.")
+        method = kind.methods[expression.func_name]
+        if len(expression.arguments) != len(method.parameters):
+            raise Exception(f"Expected '{len(method.parameters)}' argument, but '{len(expression.arguments)}' were provided.")
+        for argument in expression.arguments:
+            self.check_expression(argument.expression)
+            argument.kind = argument.expression.kind
+        for argument, parameter in zip(expression.arguments, method.parameters):
+            argument.variable_id = parameter.variable_id
+            if argument.kind != parameter.kind:
+                raise Exception(f"Wrong type. Expected '{parameter.kind}', got '{argument.kind}'.")
+        expression.kind = method.return_type
+
+
     def check_if_statement(self, statement):
         self.check_expression(statement.condition)
-        if statement.condition.type_name != "Bool":
-            raise Exception(f"Expected 'Bool', but found '{statement.condition.type_name}'")
+        if statement.condition.kind != ast.NormalType("Bool"):
+            raise Exception(f"Expected 'Bool', but found '{statement.condition.kind}'")
+        self.check_block(statement.block)
+
+    def check_while_statement(self, statement):
+        self.check_expression(statement.condition)
+        if statement.condition.kind != ast.NormalType("Bool"):
+            raise Exception(f"Expected 'Bool' but found '{statement.condition.kind}'")
         self.check_block(statement.block)
 
     def check_structure_instanciation(self, expression):
-        expression.type_name = expression.name
+        expression.kind = ast.NormalType(expression.name)
         structure = self.ast.all_types[expression.name]
         for name, argument in expression.arguments.items():
             self.check_expression(argument.expression)
         if len(expression.arguments) != len(structure.fields):
             raise Exception(f"Structure '{expression.name}' has got '{len(structure.fields)}' fields.")
-        for name, kind in structure.fields.items():
-            if expression.arguments[name].expression.type_name != kind.type_name:
+        for name, field in structure.fields.items():
+            if expression.arguments[name].expression.kind.type_name != field.kind.type_name:
                 raise Exception(f"Expected '{kind.type_name}', but got '{expression.arguments[name].expression.type_name}'")

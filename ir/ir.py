@@ -46,8 +46,7 @@ class LOAD_VARIABLE(Instruction):
 
 
 class LOAD_DEREF(Instruction):
-    def __init__(self, variable_offset, size):
-        self.variable_offset = variable_offset
+    def __init__(self, size):
         self.size = size
 
 
@@ -67,10 +66,30 @@ class STORE_VARIABLE(Instruction):
         self.size = size
         
 
+class STORE_VARIABLE_DEREF(Instruction):
+    def __init__(self, variable_offset, size):
+        self.variable_offset = variable_offset
+        self.size = size
+
+
 class STORE_ARGUMENT(Instruction):
     def __init__(self, offset, size):
         self.offset = offset
         self.size = size
+
+
+class GET_ATTR(Instruction):
+    def __init__(self, offset, size, expr_size):
+        self.offset = offset
+        self.size = size
+        self.expr_size = expr_size
+
+
+class GET_ATTR_DEREF(Instruction):
+    def __init__(self, offset, size, expr_size):
+        self.offset = offset
+        self.size = size
+        self.expr_size = expr_size
 
 
 class RETURN(Instruction):
@@ -81,6 +100,11 @@ class RETURN(Instruction):
 class POP_JMP_IF_FALSE(Instruction):
     def __init__(self, size, label_name):
         self.size = size
+        self.label_name = label_name
+
+
+class JMP(Instruction):
+    def __init__(self, label_name):
         self.label_name = label_name
 
 

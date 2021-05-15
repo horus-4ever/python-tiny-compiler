@@ -13,6 +13,8 @@ class NameConverter:
         for type_name, structure in self.ast.all_types.items():
             new_structure = self.convert_structure(structure)
             self.types[type_name] = new_structure
+        for type_name, structure in self.types.items():
+            self.convert_structure_fields(structure)
         self.functions = {}
         for func_name, function in self.ast.functions.items():
             new_func = self.convert_function(function)
@@ -21,7 +23,6 @@ class NameConverter:
         for func_name, function in self.ast.builtin_functions.items():
             new_func = self.convert_builtin_function(function)
             self.builtin_functions[func_name] = new_func
-        print(self.functions, self.builtin_functions)
         return ir.Root(self.functions, self.builtin_functions, self.types)
 
     def convert_structures_to_functions(self):
@@ -38,6 +39,16 @@ class NameConverter:
                 new_function = ast.BuiltinFunction(new_name, method.parameters, method.return_type)
                 self.ast.builtin_functions[id_name] = new_function
 
+    def convert_structure_fields(self, type):
+        structure = self.ast.all_types[type.type_name]
+        offset = 0
+        for field_name, field in structure.fields.items():
+            field_kind = self.types[field.kind.type_name]
+            type.fields[field_name] = ir.Field(field_name, field_kind.stack_size, offset)
+            offset += field_kind.stack_size
+        if not type.is_builtin:
+            type.stack_size = offset
+
     def convert_builtin_function(self, function):
         new_variables = {}
         variable_offset = 0
@@ -49,7 +60,6 @@ class NameConverter:
         return ir.BuiltinFunction(function.name, return_size, new_variables)
     
     def convert_function(self, function):
-        print("HERE", function.name, function.scope, function.parameters)
         new_func_name = f"func__{hashlib.md5(function.name.encode()).hexdigest()}"
         func_scope = function.scope
         new_variables = {}
@@ -77,12 +87,14 @@ class NameConverter:
             stack_size = structure.stack_size
             is_builtin = True
             is_copy = "Copy" in structure.implements
+            fields = {}
         else:
             type_name = structure.name
             stack_size = 0
             is_builtin = False
             is_copy = False
-        return ir.Type(type_name, stack_size, is_builtin, is_copy)
+            fields = {}
+        return ir.Type(type_name, fields, stack_size, is_builtin, is_copy)
 
     def convert_variable(self, variable, offset):
         kind = variable.kind
