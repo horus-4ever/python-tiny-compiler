@@ -1,0 +1,8 @@
+func test(a: &Int): Int {
+    let var = 5;
+}
+
+func main(): Empty {
+    let a = 5;
+    test(&a);
+}

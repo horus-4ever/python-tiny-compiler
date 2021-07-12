@@ -1,0 +1,3 @@
+func main() {
+    println(&String::from("Hello World!"));
+}

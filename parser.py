@@ -306,7 +306,18 @@ class Parser(languageVisitor):
     def visitFunction_call(self, ctx):
         name = ctx.IDENTIFIER().getText()
         arguments = self.visitArguments(ctx.arguments())
-        return FunctionCall(name, arguments)
+        if ctx.generics_ref():
+            generics = self.visitGenerics_ref(ctx.generics_ref())
+        else:
+            generics = []
+        return FunctionCall(name, arguments, generics)
+
+    def visitGenerics_ref(self, ctx):
+        generic_types = []
+        for normal_type in ctx.normal_type():
+            name = normal_type.IDENTIFIER().getText()
+            generic_types.append(NormalType(name))
+        return generic_types
     
     def visitArguments(self, ctx):
         if ctx is None:

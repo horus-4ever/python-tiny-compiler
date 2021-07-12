@@ -1,0 +1,7 @@
+struct Test {
+    a: Int;
+}
+
+func main(): Empty {
+    let value = Test {a: 5};
+}

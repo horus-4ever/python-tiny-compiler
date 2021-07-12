@@ -119,18 +119,35 @@ class TypeChecker:
     def check_binary_expression(self, expression):
         self.check_expression(expression.left)
         self.check_expression(expression.right)
-        trait, function = expression.TRAIT, expression.METHOD
+        trait_name, function_name = expression.TRAIT, expression.METHOD
         left_type_name = expression.left.kind.type_name
-        kind = self.ast.all_types[left_type_name]
-        method = kind.methods[function]
-        if trait not in kind.implements:
+        # check if the type implements the trait
+        kind = self.current_scope.lookup(left_type_name)
+        trait = self.ast.traits[trait_name]
+        method = trait.functions[function_name]
+        if trait_name not in kind.implements:
             raise Exception(f"Type '{kind.name}' must implement the trait '{trait}' to use the corresponding operator.")
-        left_expected, right_expected = (parameter.kind for parameter in method.parameters)
+        # left and right expected types
+        left_parameter, right_parameter = method.parameters
+        if left_parameter.kind.type_name == "Self":
+            left_expected = type(left_parameter.kind)(left_type_name)
+        else:
+            left_expected = left_parameter.kind
+        if right_parameter.kind.type_name == "Self":
+            right_expected = type(right_parameter.kind)(left_type_name)
+        else:
+            right_expected = right_parameter.kind
         left_kind, right_kind = expression.left.kind, expression.right.kind
         if left_expected != left_kind or right_expected != right_kind:
             raise Exception(f"Wrong types. ('{left_expected}', '{right_expected}') but got ('{left_kind}', '{right_kind}')")
-        expression.kind = method.return_type
-        method_call = ast.ClassmethodCall(left_type_name, function, [ast.Argument(expression.left), ast.Argument(expression.right)])
+        # return type
+        return_type = method.return_type
+        if return_type.type_name == "Self":
+            new_return_type = type(return_type)(left_type_name)
+        else:
+            new_return_type = type(return_type)(return_type.type_name)
+        expression.kind = new_return_type
+        method_call = ast.ClassmethodCall(left_type_name, function_name, [ast.Argument(expression.left), ast.Argument(expression.right)])
         self.check_classmethod_call(method_call)
         expression.classmethod_call = method_call
 
@@ -191,7 +208,8 @@ class TypeChecker:
         expression.kind = function.return_type
 
     def check_classmethod_call(self, expression):
-        method = self.ast.all_types[expression.struct_name].methods[expression.func_name]
+        kind = self.current_scope.lookup(expression.struct_name)
+        method = kind.methods[expression.func_name]
         if len(expression.arguments) != len(method.parameters):
             raise Exception(f"Expected '{len(method.parameters)}' argument, but '{len(expression.arguments)}' were provided.")
         for argument in expression.arguments:

@@ -1,0 +1,71 @@
+trait Copy {}
+
+trait Add
+{
+    func add(a: Self, b: Self): Self;
+}
+
+trait Sub
+{
+    func sub(a: Self, b: Self): Self;
+}
+
+trait Mul
+{
+    func mul(a: Self, b: Self): Self;
+}
+
+trait Eq
+{
+    func eq(a: &Self, b: &Self): Bool;
+    func neq(a: &Self, b: &Self): Bool;
+}
+
+trait Cmp 
+{
+    func greater(a: &Self, b: &Self): Bool;
+    func lower(a: &Self, b: &Self): Bool;
+}
+
+trait Sized 
+{
+    func len(a: &Self): Int;
+}
+
+builtin struct Empty [0] {}
+
+builtin struct Str [8]
+    deriving Copy + Sized
+{
+    builtin func len(string: &Str): Int;
+}
+
+builtin struct Int [4]
+    deriving Copy + Add + Sub + Eq + Cmp + Mul
+{
+    builtin func to_string(integer: Int): String;
+    builtin func add(a: Int, b: Int): Int;
+    builtin func sub(a: Int, b: Int): Int;
+    builtin func mul(a: Int, b: Int): Int;
+    builtin func eq(a: &Int, b: &Int): Bool;
+    builtin func neq(a: &Int, b: &Int): Bool;
+    builtin func greater(a: &Int, b: &Int): Bool;
+    builtin func lower(a: &Int, b: &Int): Bool;
+}
+
+builtin struct Bool [4]
+    deriving Copy + Eq
+{
+    builtin func eq(a: &Bool, b: &Bool): Bool;
+    builtin func neq(a: &Bool, b: &Bool): Bool;
+}
+
+builtin struct String [8] 
+    deriving Sized
+{
+    builtin func from(string: Str): String;
+    builtin func len(string: &String): String;
+}
+
+builtin func println(message: &String): Empty;
+builtin func print(message: &String): Empty;

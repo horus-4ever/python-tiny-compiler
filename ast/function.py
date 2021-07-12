@@ -1,4 +1,5 @@
 from .ast import AST
+from .scope import Scope
 
 
 class Function(AST):
@@ -7,7 +8,7 @@ class Function(AST):
         self.parameters = parameters
         self.return_type = return_type
         self.block = block
-        self.scope = {}
+        self.scope = Scope()
 
 
 class GenericFunction(AST):
@@ -17,7 +18,7 @@ class GenericFunction(AST):
         self.return_type = return_type
         self.block = block
         self.generics = generics
-        self.scope = {}
+        self.scope = Scope()
 
 
 class BuiltinFunction(AST):
@@ -25,7 +26,7 @@ class BuiltinFunction(AST):
         self.name = name
         self.parameters = parameters
         self.return_type = return_type
-        self.scope = {}
+        self.scope = Scope()
 
 
 class FunctionPrototype(AST):

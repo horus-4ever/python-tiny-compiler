@@ -62,7 +62,7 @@ try:
 
     ir_converter = ToIR(ir)
     ir = ir_converter.convert()
-    # print(ir)
+    print(ir)
     
     assembly = ToASM(ir)
     assembly = assembly.to_asm()

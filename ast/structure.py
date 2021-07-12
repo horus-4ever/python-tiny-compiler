@@ -1,7 +1,18 @@
 from .ast import AST
 
 
-class Structure(AST):
+class Type(AST):
+    pass
+
+
+class GenericType(Type):
+    def __init__(self, name, implements):
+        self.name = name
+        self.implements = implements
+        self.methods = {}
+
+
+class Structure(Type):
     def __init__(self, name, fields, methods, implements=()):
         self.name = name
         self.fields = fields
@@ -12,7 +23,7 @@ class Structure(AST):
         return 0
 
 
-class BuiltinStructure(AST):
+class BuiltinStructure(Type):
     def __init__(self, name, stack_size, fields, builtin_methods, implements=()):
         self.name = name
         self.stack_size = stack_size

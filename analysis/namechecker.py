@@ -5,7 +5,7 @@ import ast
 class NameChecker:
     def __init__(self, ast):
         self.ast = ast
-        self.scopes = deque([None])
+        self.scopes = deque([self.ast.global_scope])
         self.current_structure = None
 
     @property
@@ -19,7 +19,7 @@ class NameChecker:
     def scope_lookup(self, to_find, kind):
         current_scope = self.current_scope
         while current_scope is not None:
-            for name, value in current_scope:
+            for name, value in current_scope.items():
                 if isinstance(value, kind) and name == to_find:
                     return current_scope
             current_scope = current_scope.parent
@@ -45,8 +45,8 @@ class NameChecker:
         return self.ast
 
     def flatten_function_scope(self, function):
-        scope = function.block.scope
-        new_scope = scope.flatten()
+        new_scope = function.scope.flatten()
+        print(new_scope)
         function.scope = new_scope
 
     def check_structure(self, structure):
@@ -67,20 +67,53 @@ class NameChecker:
             self.check_builtin_function(function)
 
     def check_builtin_function(self, function):
+        self.current_scope.children.append(function.scope)
+        function.scope.parent = self.current_scope
+        self.scopes.append(function.scope)
         self.check_parameters(function)
         self.check_return_type(function)
+        self.scopes.pop()
 
     def check_function(self, function):
+        self.current_scope.children.append(function.scope)
+        function.scope.parent = self.current_scope
+        self.scopes.append(function.scope)
+        if isinstance(function, ast.GenericFunction):
+            self.check_generic_function_parameters(function)
         self.check_parameters(function)
         self.check_return_type(function)
         self.check_block(function.block)
+        self.scopes.pop()
+
+    def check_generic_function_parameters(self, function):
+        for generic_name, generic_type in function.generics.items():
+            for trait_name in generic_type.implements:
+                if trait_name not in self.ast.traits:
+                    raise Exception(f"Trait '{trait_name}' not found in the global scope.")
+                trait = self.ast.traits[trait_name]
+                for method_name, method in trait.functions.items():
+                    parameters = []
+                    for parameter in method.parameters:
+                        param_kind = type(parameter.kind)
+                        if parameter.kind.type_name == "Self":
+                            new_parameter = ast.Parameter(parameter.name, param_kind(generic_name))
+                        else:
+                            new_parameter = ast.Parameter(parameter.name, param_kind(parameter.kind.type_name))
+                        parameters.append(new_parameter)
+                    if method.return_type.type_name == "Self":
+                        return_type = ast.NormalType(generic_name)
+                    else:
+                        return_type = ast.NormalType(method.return_type.type_name)
+                    new_function = ast.FunctionPrototype(method_name, parameters, return_type)
+                    generic_type.methods.update({method_name: new_function})
+            self.current_scope[generic_name] = generic_type
     
     def check_parameters(self, function):
         for parameter in function.parameters:
             kind = parameter.kind
             if self.current_structure is not None and kind.type_name == "Self":
                 kind.type_name = self.current_structure.name
-            if kind.type_name not in self.ast.all_types:
+            if self.scope_lookup(kind.type_name, ast.Type) is None:
                 raise Exception(f"Cannot find type '{kind.type_name}' in the global scope.")
             if isinstance(function, ast.Function):
                 if parameter.name in function.block.scope:
@@ -100,7 +133,7 @@ class NameChecker:
         if self.current_structure is not None and type_name == "Self":
             type_name = self.current_structure.name
             function.return_type.type_name = type_name
-        if type_name not in self.ast.all_types:
+        if self.scope_lookup(type_name, ast.Type) is None:
             raise Exception(f"Cannot find type '{type_name}' in the global scope.")
 
     def check_block(self, block):
@@ -118,7 +151,7 @@ class NameChecker:
         elif isinstance(statement, (ast.Assignement, ast.DerefAssignement)):
             self.check_assignement(statement)
         elif isinstance(statement, ast.Return):
-            statement.drop_variables = list(self.current_scope.elements.values())
+            # statement.drop_variables = list(self.current_scope.elements.values())
             self.check_expression(statement.expression)
         elif isinstance(statement, ast.Expression):
             self.check_expression(statement)
@@ -137,7 +170,7 @@ class NameChecker:
         self.current_scope[statement.name] = variable
         statement.variable_id = id(variable)
         if statement.kind is not None:
-            if statement.kind.type_name not in self.ast.all_types:
+            if self.scope_lookup(statement.kind.type_name, ast.BuiltinStructure, ast.Structure, ast.Type) is None:
                 raise Exception(f"Unkown type '{statement.type_name}'")
 
     def check_assignement(self, statement):
@@ -175,7 +208,7 @@ class NameChecker:
         self.check_expression(expression.expression)
 
     def check_variable_reference(self, expression):
-        scope = self.scope_lookup(expression.name, kind=ast.Variable)
+        scope = self.scope_lookup(expression.name, ast.Variable)
         if scope is None:
             raise Exception(f"Variable '{expression.name}' is not defined.")
         else:

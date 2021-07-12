@@ -19,7 +19,9 @@ implements:             'deriving' normal_type ('+' normal_type)* ;
 generics:               '<' generic (',' generic)* '>' ;
 generic:                IDENTIFIER implements? ;
 
-function_declaration:   'func' IDENTIFIER generics? '(' parameters? ')' type_annotation block ;
+generics_ref:           '<' normal_type (',' normal_type)* '>' ;
+
+function_declaration:   'func' generics? IDENTIFIER '(' parameters? ')' type_annotation block ;
 parameters:             parameter (',' parameter)* ;
 parameter:              IDENTIFIER type_annotation ;
 block:                  '{' statement* '}' ;
@@ -46,7 +48,7 @@ lvalue_ref:             '&' IDENTIFIER ;
 deref:                  '*' expression ;
 factor:                 NUMBER | IDENTIFIER | STRING | true | false | ('(' expression ')') ;
 get_attribute:          expression '.' IDENTIFIER ;
-function_call:          IDENTIFIER '(' arguments? ')' ;
+function_call:          IDENTIFIER generics_ref? '(' arguments? ')' ;
 method_call:            expression '.' IDENTIFIER '(' arguments? ')' ;
 classmethod_call:       normal_type '::' IDENTIFIER '(' arguments? ')' ;
 arguments:              expression (',' expression)* ;

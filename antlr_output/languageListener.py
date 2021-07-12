@@ -71,6 +71,78 @@ class languageListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by languageParser#trait_declaration.
+    def enterTrait_declaration(self, ctx:languageParser.Trait_declarationContext):
+        pass
+
+    # Exit a parse tree produced by languageParser#trait_declaration.
+    def exitTrait_declaration(self, ctx:languageParser.Trait_declarationContext):
+        pass
+
+
+    # Enter a parse tree produced by languageParser#function_prototype.
+    def enterFunction_prototype(self, ctx:languageParser.Function_prototypeContext):
+        pass
+
+    # Exit a parse tree produced by languageParser#function_prototype.
+    def exitFunction_prototype(self, ctx:languageParser.Function_prototypeContext):
+        pass
+
+
+    # Enter a parse tree produced by languageParser#builtin_function.
+    def enterBuiltin_function(self, ctx:languageParser.Builtin_functionContext):
+        pass
+
+    # Exit a parse tree produced by languageParser#builtin_function.
+    def exitBuiltin_function(self, ctx:languageParser.Builtin_functionContext):
+        pass
+
+
+    # Enter a parse tree produced by languageParser#builtin_structure.
+    def enterBuiltin_structure(self, ctx:languageParser.Builtin_structureContext):
+        pass
+
+    # Exit a parse tree produced by languageParser#builtin_structure.
+    def exitBuiltin_structure(self, ctx:languageParser.Builtin_structureContext):
+        pass
+
+
+    # Enter a parse tree produced by languageParser#implements.
+    def enterImplements(self, ctx:languageParser.ImplementsContext):
+        pass
+
+    # Exit a parse tree produced by languageParser#implements.
+    def exitImplements(self, ctx:languageParser.ImplementsContext):
+        pass
+
+
+    # Enter a parse tree produced by languageParser#generics.
+    def enterGenerics(self, ctx:languageParser.GenericsContext):
+        pass
+
+    # Exit a parse tree produced by languageParser#generics.
+    def exitGenerics(self, ctx:languageParser.GenericsContext):
+        pass
+
+
+    # Enter a parse tree produced by languageParser#generic.
+    def enterGeneric(self, ctx:languageParser.GenericContext):
+        pass
+
+    # Exit a parse tree produced by languageParser#generic.
+    def exitGeneric(self, ctx:languageParser.GenericContext):
+        pass
+
+
+    # Enter a parse tree produced by languageParser#generics_ref.
+    def enterGenerics_ref(self, ctx:languageParser.Generics_refContext):
+        pass
+
+    # Exit a parse tree produced by languageParser#generics_ref.
+    def exitGenerics_ref(self, ctx:languageParser.Generics_refContext):
+        pass
+
+
     # Enter a parse tree produced by languageParser#function_declaration.
     def enterFunction_declaration(self, ctx:languageParser.Function_declarationContext):
         pass
@@ -125,12 +197,30 @@ class languageListener(ParseTreeListener):
         pass
 
 
-    # Enter a parse tree produced by languageParser#make_ref.
-    def enterMake_ref(self, ctx:languageParser.Make_refContext):
+    # Enter a parse tree produced by languageParser#reference.
+    def enterReference(self, ctx:languageParser.ReferenceContext):
         pass
 
-    # Exit a parse tree produced by languageParser#make_ref.
-    def exitMake_ref(self, ctx:languageParser.Make_refContext):
+    # Exit a parse tree produced by languageParser#reference.
+    def exitReference(self, ctx:languageParser.ReferenceContext):
+        pass
+
+
+    # Enter a parse tree produced by languageParser#rvalue_ref.
+    def enterRvalue_ref(self, ctx:languageParser.Rvalue_refContext):
+        pass
+
+    # Exit a parse tree produced by languageParser#rvalue_ref.
+    def exitRvalue_ref(self, ctx:languageParser.Rvalue_refContext):
+        pass
+
+
+    # Enter a parse tree produced by languageParser#lvalue_ref.
+    def enterLvalue_ref(self, ctx:languageParser.Lvalue_refContext):
+        pass
+
+    # Exit a parse tree produced by languageParser#lvalue_ref.
+    def exitLvalue_ref(self, ctx:languageParser.Lvalue_refContext):
         pass
 
 
@@ -224,6 +314,78 @@ class languageListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by languageParser#binary_expression.
+    def enterBinary_expression(self, ctx:languageParser.Binary_expressionContext):
+        pass
+
+    # Exit a parse tree produced by languageParser#binary_expression.
+    def exitBinary_expression(self, ctx:languageParser.Binary_expressionContext):
+        pass
+
+
+    # Enter a parse tree produced by languageParser#binary_and.
+    def enterBinary_and(self, ctx:languageParser.Binary_andContext):
+        pass
+
+    # Exit a parse tree produced by languageParser#binary_and.
+    def exitBinary_and(self, ctx:languageParser.Binary_andContext):
+        pass
+
+
+    # Enter a parse tree produced by languageParser#binary_or.
+    def enterBinary_or(self, ctx:languageParser.Binary_orContext):
+        pass
+
+    # Exit a parse tree produced by languageParser#binary_or.
+    def exitBinary_or(self, ctx:languageParser.Binary_orContext):
+        pass
+
+
+    # Enter a parse tree produced by languageParser#binary_eq.
+    def enterBinary_eq(self, ctx:languageParser.Binary_eqContext):
+        pass
+
+    # Exit a parse tree produced by languageParser#binary_eq.
+    def exitBinary_eq(self, ctx:languageParser.Binary_eqContext):
+        pass
+
+
+    # Enter a parse tree produced by languageParser#binary_neq.
+    def enterBinary_neq(self, ctx:languageParser.Binary_neqContext):
+        pass
+
+    # Exit a parse tree produced by languageParser#binary_neq.
+    def exitBinary_neq(self, ctx:languageParser.Binary_neqContext):
+        pass
+
+
+    # Enter a parse tree produced by languageParser#binary_mul.
+    def enterBinary_mul(self, ctx:languageParser.Binary_mulContext):
+        pass
+
+    # Exit a parse tree produced by languageParser#binary_mul.
+    def exitBinary_mul(self, ctx:languageParser.Binary_mulContext):
+        pass
+
+
+    # Enter a parse tree produced by languageParser#binary_add.
+    def enterBinary_add(self, ctx:languageParser.Binary_addContext):
+        pass
+
+    # Exit a parse tree produced by languageParser#binary_add.
+    def exitBinary_add(self, ctx:languageParser.Binary_addContext):
+        pass
+
+
+    # Enter a parse tree produced by languageParser#binary_sub.
+    def enterBinary_sub(self, ctx:languageParser.Binary_subContext):
+        pass
+
+    # Exit a parse tree produced by languageParser#binary_sub.
+    def exitBinary_sub(self, ctx:languageParser.Binary_subContext):
+        pass
+
+
     # Enter a parse tree produced by languageParser#non_expression.
     def enterNon_expression(self, ctx:languageParser.Non_expressionContext):
         pass
@@ -248,6 +410,15 @@ class languageListener(ParseTreeListener):
 
     # Exit a parse tree produced by languageParser#assignement.
     def exitAssignement(self, ctx:languageParser.AssignementContext):
+        pass
+
+
+    # Enter a parse tree produced by languageParser#deref_assignement.
+    def enterDeref_assignement(self, ctx:languageParser.Deref_assignementContext):
+        pass
+
+    # Exit a parse tree produced by languageParser#deref_assignement.
+    def exitDeref_assignement(self, ctx:languageParser.Deref_assignementContext):
         pass
 
 
@@ -284,6 +455,15 @@ class languageListener(ParseTreeListener):
 
     # Exit a parse tree produced by languageParser#return_statement.
     def exitReturn_statement(self, ctx:languageParser.Return_statementContext):
+        pass
+
+
+    # Enter a parse tree produced by languageParser#while_statement.
+    def enterWhile_statement(self, ctx:languageParser.While_statementContext):
+        pass
+
+    # Exit a parse tree produced by languageParser#while_statement.
+    def exitWhile_statement(self, ctx:languageParser.While_statementContext):
         pass
 
 

@@ -1,0 +1,7 @@
+func<T deriving Add> add(a: T, b: T): T {
+    return a + b;
+}
+
+func main(): Empty {
+    let result = add<Int>(2, 3);
+}

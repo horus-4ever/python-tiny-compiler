@@ -1,7 +1,25 @@
-func something(t: &Int): String {
+trait Describe {
+    func describe(a: &Self): String;
+}
 
+struct Person deriving Describe {
+    name: String;
+    age: Int;
+
+    func describe(self: &Self): Empty {
+        print(&String::from("I am "));
+        print(&(self.name));
+        print(&String::from(" and my age is: "));
+        println(&(self.age.to_string()));
+    }
+
+    func new(name: String, age: Int): Self {
+        return Person { name: name, age: age };
+    }
 }
 
 func main(): Empty {
-    let something: Int = 5;
+    let person = Person::new(String::from("NoOne"), 42);
+    let str: Str = "Hello";
+    (&person).describe();
 }

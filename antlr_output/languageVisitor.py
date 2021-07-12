@@ -44,6 +44,46 @@ class languageVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by languageParser#trait_declaration.
+    def visitTrait_declaration(self, ctx:languageParser.Trait_declarationContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by languageParser#function_prototype.
+    def visitFunction_prototype(self, ctx:languageParser.Function_prototypeContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by languageParser#builtin_function.
+    def visitBuiltin_function(self, ctx:languageParser.Builtin_functionContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by languageParser#builtin_structure.
+    def visitBuiltin_structure(self, ctx:languageParser.Builtin_structureContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by languageParser#implements.
+    def visitImplements(self, ctx:languageParser.ImplementsContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by languageParser#generics.
+    def visitGenerics(self, ctx:languageParser.GenericsContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by languageParser#generic.
+    def visitGeneric(self, ctx:languageParser.GenericContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by languageParser#generics_ref.
+    def visitGenerics_ref(self, ctx:languageParser.Generics_refContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by languageParser#function_declaration.
     def visitFunction_declaration(self, ctx:languageParser.Function_declarationContext):
         return self.visitChildren(ctx)
@@ -74,8 +114,18 @@ class languageVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by languageParser#make_ref.
-    def visitMake_ref(self, ctx:languageParser.Make_refContext):
+    # Visit a parse tree produced by languageParser#reference.
+    def visitReference(self, ctx:languageParser.ReferenceContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by languageParser#rvalue_ref.
+    def visitRvalue_ref(self, ctx:languageParser.Rvalue_refContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by languageParser#lvalue_ref.
+    def visitLvalue_ref(self, ctx:languageParser.Lvalue_refContext):
         return self.visitChildren(ctx)
 
 
@@ -129,6 +179,46 @@ class languageVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by languageParser#binary_expression.
+    def visitBinary_expression(self, ctx:languageParser.Binary_expressionContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by languageParser#binary_and.
+    def visitBinary_and(self, ctx:languageParser.Binary_andContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by languageParser#binary_or.
+    def visitBinary_or(self, ctx:languageParser.Binary_orContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by languageParser#binary_eq.
+    def visitBinary_eq(self, ctx:languageParser.Binary_eqContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by languageParser#binary_neq.
+    def visitBinary_neq(self, ctx:languageParser.Binary_neqContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by languageParser#binary_mul.
+    def visitBinary_mul(self, ctx:languageParser.Binary_mulContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by languageParser#binary_add.
+    def visitBinary_add(self, ctx:languageParser.Binary_addContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by languageParser#binary_sub.
+    def visitBinary_sub(self, ctx:languageParser.Binary_subContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by languageParser#non_expression.
     def visitNon_expression(self, ctx:languageParser.Non_expressionContext):
         return self.visitChildren(ctx)
@@ -141,6 +231,11 @@ class languageVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by languageParser#assignement.
     def visitAssignement(self, ctx:languageParser.AssignementContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by languageParser#deref_assignement.
+    def visitDeref_assignement(self, ctx:languageParser.Deref_assignementContext):
         return self.visitChildren(ctx)
 
 
@@ -161,6 +256,11 @@ class languageVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by languageParser#return_statement.
     def visitReturn_statement(self, ctx:languageParser.Return_statementContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by languageParser#while_statement.
+    def visitWhile_statement(self, ctx:languageParser.While_statementContext):
         return self.visitChildren(ctx)
 
 

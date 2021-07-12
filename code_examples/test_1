@@ -1,4 +1,17 @@
+struct Vector deriving Add {
+    dx: Int;
+    dy: Int;
+    func add(a: Self, b: Self): Self {
+        return Vector { dx: (a.dx) + (b.dx), dy: (a.dy) + (b.dy) };
+    }
+    func new(x: Int, y: Int): Self {
+        return Vector { dx: x, dy: y };
+    }
+}
+
 func main(): Empty {
-    let result = String::from("Hello");
-    print(result);
+    let vec_one = Vector::new(2, 3);
+    let vec_two = Vector::new(4, 5);
+    let vec_three = vec_one + vec_two;
+    println(&(vec_three.dx.to_string()));
 }

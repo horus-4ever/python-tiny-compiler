@@ -1,10 +1,12 @@
 from .statement import Statement
+from .variable import VariableState
 
 
 class Expression(Statement):
     def __init__(self):
         super().__init__()
         self.kind = None
+        self.state = VariableState()
 
 
 class LValueRef(Expression):
@@ -42,10 +44,11 @@ class VariableReference(Expression):
 
 
 class FunctionCall(Expression):
-    def __init__(self, name, arguments):
+    def __init__(self, name, arguments, generics=[]):
         super().__init__()
         self.name = name
         self.arguments = arguments
+        self.generics = generics
 
 
 class Argument(Expression):
